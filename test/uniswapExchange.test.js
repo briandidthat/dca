@@ -14,6 +14,7 @@ describe("UniswapExchange", async () => {
   let weth, dai, usdt, usdc;
   const daiAmount = 100n * 10n ** 18n;
   const usdcAmount = 100n * 10n ** 6n;
+  const usdtAmount = 100n * 10n ** 6n;
 
   beforeEach(async () => {
     [dev, ...accounts] = await ethers.getSigners();
@@ -26,7 +27,7 @@ describe("UniswapExchange", async () => {
     usdc = await ethers.getContractAt("IERC20", USDC);
     usdt = await ethers.getContractAt("IERC20", USDT);
 
-    // impersonate USDC/DAI Whale
+    // unlock USDC/DAI Whale account
     await network.provider.request({
       method: "hardhat_impersonateAccount",
       params: [WHALE],
@@ -36,6 +37,7 @@ describe("UniswapExchange", async () => {
     // transfer 100 USDC & 100 DAI from whale to dev
     await dai.connect(whale).transfer(dev.address, daiAmount);
     await usdc.connect(whale).transfer(dev.address, usdcAmount);
+    
   });
 
   it("Should give the dev address 100 USDC & 100 DAI to trade", async () => {
@@ -60,6 +62,14 @@ describe("UniswapExchange", async () => {
     const balanceBefore = await weth.balanceOf(dev.address);
     await usdc.connect(dev).approve(exchange.address, usdcAmount);
     await exchange.connect(dev).swapExactInputSingle(usdcAmount, USDC);
+
+    expect(await weth.balanceOf(dev.address)).to.gte(balanceBefore);
+  });
+
+  it("swapExactInputSingle: Should swap 100 USDT for WETH", async () => {
+    const balanceBefore = await weth.balanceOf(dev.address);
+    await usdt.connect(dev).approve(exchange.address, usdtAmount);
+    await exchange.connect(dev).swapExactInputSingle(usdtAmount, USDT);
 
     expect(await weth.balanceOf(dev.address)).to.gte(balanceBefore);
   });
