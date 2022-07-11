@@ -8,6 +8,7 @@
     "hardhat": "^2.9.9"
   },
   "dependencies": {
-    "@uniswap/v3-periphery": "^1.4.1"
+    "@uniswap/v3-periphery": "^1.4.1",
+    "dotenv": "^16.0.1"
   }
 }

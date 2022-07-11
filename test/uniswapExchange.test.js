@@ -53,31 +53,32 @@ describe("UniswapExchange", async () => {
     expect(owner).to.equal(dev.address);
   });
 
-  it("Should give the user address 100 USDC & 100 DAI to trade", async () => {
+  it("Should give the user address 100 DAI, 100 USDC and 100 USDT to trade", async () => {
     expect(await dai.balanceOf(user.address)).to.gte(daiAmount);
     expect(await usdc.balanceOf(user.address)).to.gte(usdcAmount);
+    expect(await usdt.balanceOf(user.address)).to.gte(usdtAmount);
   });
 
-  it("swapExactInputSingle: Should swap 100 DAI for WETH", async () => {
+  it("swapForWETH: Should swap 100 DAI for WETH", async () => {
     const balanceBefore = await weth.balanceOf(user.address);
     await dai.connect(user).approve(exchange.address, daiAmount);
-    await exchange.connect(user).swapExactInputSingle(daiAmount, DAI);
+    await exchange.connect(user).swapForWETH(daiAmount, DAI);
 
     expect(await weth.balanceOf(user.address)).to.gte(balanceBefore);
   });
 
-  it("swapExactInputSingle: Should swap 100 USDC for WETH", async () => {
+  it("swapForWETH: Should swap 100 USDC for WETH", async () => {
     const balanceBefore = await weth.balanceOf(user.address);
     await usdc.connect(user).approve(exchange.address, usdcAmount);
-    await exchange.connect(user).swapExactInputSingle(usdcAmount, USDC);
+    await exchange.connect(user).swapForWETH(usdcAmount, USDC);
 
     expect(await weth.balanceOf(user.address)).to.gte(balanceBefore);
   });
 
-  it("swapExactInputSingle: Should swap 100 USDT for WETH", async () => {
+  it("swapForWETH: Should swap 100 USDT for WETH", async () => {
     const balanceBefore = await weth.balanceOf(user.address);
     await usdt.connect(user).approve(exchange.address, usdtAmount);
-    await exchange.connect(user).swapExactInputSingle(usdtAmount, USDT);
+    await exchange.connect(user).swapForWETH(usdtAmount, USDT);
 
     expect(await weth.balanceOf(user.address)).to.gte(balanceBefore);
   });
