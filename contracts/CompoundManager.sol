@@ -6,34 +6,41 @@ import "./interfaces/TokenLibrary.sol";
 import "./interfaces/ICERC20.sol";
 
 contract CompoundManager {
-    event CompoundLog(uint256 timestamp, bytes32 data);
     event Supply(address indexed owner, address indexed asset, uint256 amount);
     event Redeeem(address indexed owner, address indexed asset, uint256 amount);
 
-    function supplyEthToCompound() external payable {}
+    function supplyEth() external payable {}
 
-    function redeemEthFromCompound() external {}
+    function redeemEth() external {}
 
-    function supplyStableToCompound(
+    function supplyStablecoin(
         address _underlying,
         uint256 _amount,
         address _owner
     ) external returns (uint256) {
+        require(
+            IERC20(_underlying).allowance(msg.sender, address(this)) >= _amount,
+            "Insufficient allowance"
+        );
         IERC20 underlying = IERC20(_underlying);
+        underlying.transferFrom(msg.sender, address(this), _amount);
+
         address cTokenAddress = TokenLibrary.getCtokenAddress(_underlying);
         ICERC20 cToken = ICERC20(cTokenAddress);
 
         underlying.approve(cTokenAddress, _amount);
         uint256 mintResult = cToken.mint(_amount);
 
-        cToken.approve(_owner, _amount);
+        uint256 balance = cToken.balanceOf(address(this));
 
-        emit Supply(_owner, _underlying, _amount);
+        cToken.transfer(_owner, balance);
+
+        emit Supply(_owner, _underlying, mintResult);
 
         return mintResult;
     }
 
-    function redeemStableFromCompound(
+    function redeemStablecoin(
         uint256 _amount,
         bool redeemType,
         address _cToken,
