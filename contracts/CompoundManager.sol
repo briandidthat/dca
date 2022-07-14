@@ -27,10 +27,12 @@ contract CompoundManager {
     function redeemEth(
         uint256 _amount,
         bool _redeemType,
-        address _owner
+        address payable _owner
     ) external returns (bool) {
         address cTokenAddress = TokenLibrary.getCtokenAddress(address(0));
         ICETH cToken = ICETH(cTokenAddress);
+
+        cToken.transferFrom(_owner, address(this), _amount);
 
         uint256 redeemResult;
 
@@ -44,9 +46,9 @@ contract CompoundManager {
 
         emit Redeeem(_owner, address(0), redeemResult);
 
-        payable(_owner).transfer(redeemResult);
+        (bool success, ) = _owner.call{value: redeemResult}("");
 
-        return true;
+        return success;
     }
 
     function supplyStablecoin(
