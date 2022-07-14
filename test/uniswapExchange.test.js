@@ -1,13 +1,8 @@
 const { expect } = require("chai");
 const { ethers, network } = require("hardhat");
+const { TOKEN_DETAILS, USDT_WHALE, WHALE } = require("./utils");
 
-const DAI = "0x6b175474e89094c44da98b954eedeac495271d0f";
-const WETH9 = "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2";
-const USDC = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48";
-const USDT = "0xdac17f958d2ee523a2206206994597c13d831ec7";
-
-const WHALE = "0x7a8edc710ddeadddb0b539de83f3a306a621e823";
-const USDT_WHALE = "0xa929022c9107643515f5c777ce9a910f0d1e490c";
+const { DAI, USDC, USDT, WETH } = TOKEN_DETAILS.networks.mainnet;
 
 describe("UniswapExchange", async () => {
   let accounts, dev, whale, usdtWhale;
@@ -19,12 +14,19 @@ describe("UniswapExchange", async () => {
 
   beforeEach(async () => {
     [dev, user, ...accounts] = await ethers.getSigners();
-    const Exchange = await ethers.getContractFactory("UniswapExchange", dev);
+    const Library = await ethers.getContractFactory("TokenLibrary");
+    const library = await Library.deploy();
+    await library.deployed();
+    const Exchange = await ethers.getContractFactory("UniswapExchange", dev, {
+      libraries: {
+        TokenLibrary: library.address,
+      },
+    });
     exchange = await Exchange.deploy();
     await exchange.deployed();
 
-    weth = await ethers.getContractAt("IWETH", WETH9);
     dai = await ethers.getContractAt("IERC20", DAI);
+    weth = await ethers.getContractAt("IWETH", WETH);
     usdc = await ethers.getContractAt("IERC20", USDC);
     usdt = await ethers.getContractAt("IERC20", USDT);
 

@@ -4,6 +4,7 @@ pragma abicoder v2;
 
 import "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
 import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
+import "./interfaces/TokenLibrary.sol";
 
 contract UniswapExchange {
     address public immutable owner;
@@ -26,19 +27,12 @@ contract UniswapExchange {
         _;
     }
 
-    modifier isStableCoin(address token) {
-        require(
-            (token == DAI || token == USDC || token == USDT),
-            "Invalid token"
-        );
-        _;
-    }
-
     function swapForWETH(uint256 _amountIn, address _token)
         external
-        isStableCoin(_token)
         returns (uint256 amountOut)
     {
+        require(TokenLibrary.isStableCoin(_token), "Invalid token");
+
         // Transfer the specified amount of _token to this contract.
         TransferHelper.safeTransferFrom(
             _token,

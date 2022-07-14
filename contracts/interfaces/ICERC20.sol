@@ -11,6 +11,10 @@ interface ICERC20 {
     function redeem(uint) external returns (uint);
 
     function redeemUnderlying(uint) external returns (uint);
+    
+    function balanceOf(address account) external view returns (uint256);
+
+    function transfer(address dst, uint amount) external returns (bool);
 
     function transferFrom(address src, address dst, uint amount) external returns (bool);
 
