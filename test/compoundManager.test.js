@@ -86,6 +86,7 @@ describe("compoundManager", async () => {
   });
 
   it("Should deposit USDC on Compound and give user a cUSDC balance", async () => {
+    // deposit USDC into vault contract to be supplied to Compound
     await usdc.connect(user).transfer(contract.address, usdcAmount);
     await usdc.connect(contract).approve(compoundManager.address, usdcAmount);
     // supply USDT tokens to compound
@@ -109,17 +110,22 @@ describe("compoundManager", async () => {
 
   // ========================= REDEEM =============================
 
-  it("Should redeem ETH from Compound and give user a ETH balance", async () => {
+  it("Should redeem cETH from Compound and return ETH to user", async () => {
+    // deposit ETH in vault contract to be supplied to Compound
+    await user.sendTransaction({ to: contract.address, value: daiAmount });
+
     // supply ETH to compound
     await compoundManager
       .connect(contract)
       .supplyEth(user.address, { value: daiAmount });
 
-    const balance = await cEth.balanceOf(user.address);
-    
+    const cEthBalance = await cEth.balanceOf(user.address);
     const balanceBefore = await waffle.provider.getBalance(user.address);
+
     // redeem ETH from compound
-    await compoundManager.redeemEth(balance, true, user.address);
+    await compoundManager
+      .connect(contract)
+      .redeemEth(cEthBalance, true, user.address);
     const balanceAfter = await waffle.provider.getBalance(user.address);
 
     expect(balanceAfter).to.gte(balanceBefore);
