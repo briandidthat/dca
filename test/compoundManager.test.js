@@ -1,8 +1,9 @@
 const { expect } = require("chai");
-const { ethers, network } = require("hardhat");
+const { ethers, network, waffle } = require("hardhat");
 const { TOKEN_DETAILS, USDT_WHALE, WHALE } = require("./utils");
 
-const { DAI, USDC, USDT, WETH, cDAI, cUSDC, cUSDT, cETH } = TOKEN_DETAILS;
+const { DAI, USDC, USDT, WETH, cDAI, cUSDC, cUSDT, cETH } =
+  TOKEN_DETAILS.networks.mainnet;
 
 describe("compoundManager", async () => {
   let compoundManager;
@@ -60,11 +61,26 @@ describe("compoundManager", async () => {
     await usdt.connect(usdtWhale).transfer(user.address, usdtAmount);
   });
 
+  // ========================= SUPPLY =============================
+
+  it("Should deposit ETH on Compound and give user a cETH balance", async () => {
+    // supply ETH to compound
+    await compoundManager
+      .connect(contract)
+      .supplyEth(user.address, { value: daiAmount });
+    const balance = await cEth.balanceOf(user.address);
+
+    // should be greater than 0
+    expect(balance).to.gte(0);
+  });
+
   it("Should deposit DAI on Compound and give user a cDAI balance", async () => {
     await dai.connect(user).transfer(contract.address, daiAmount);
     await dai.connect(contract).approve(compoundManager.address, daiAmount);
     // supply DAI tokens to compound
-    await compoundManager.connect(contract).supplyStablecoin(DAI, daiAmount, user.address);
+    await compoundManager
+      .connect(contract)
+      .supplyStablecoin(DAI, daiAmount, user.address);
     // should be greater than 0
     expect(await cDai.balanceOf(user.address)).to.gte(0);
   });
@@ -73,19 +89,39 @@ describe("compoundManager", async () => {
     await usdc.connect(user).transfer(contract.address, usdcAmount);
     await usdc.connect(contract).approve(compoundManager.address, usdcAmount);
     // supply USDT tokens to compound
-    await compoundManager.connect(contract).supplyStablecoin(USDC, usdcAmount, user.address);
+    await compoundManager
+      .connect(contract)
+      .supplyStablecoin(USDC, usdcAmount, user.address);
     // should be greater than 0
     expect(await cUsdc.balanceOf(user.address)).to.gte(0);
   });
 
-  it("Should deposit USDT on Compound and give user a cUSDT balance", async () => {
-    await usdt.connect(user).transfer(contract.address, usdtAmount);
-    await usdt.connect(contract).approve(compoundManager.address, usdtAmount);
-    // supply USDT tokens to compound
-    await compoundManager.connect(contract).supplyStablecoin(USDT, usdtAmount, user.address);
-    // should be greater than 0
-    expect(await cUsdt.balanceOf(user.address)).to.gte(0);
+  // it("Should deposit USDT on Compound and give user a cUSDT balance", async () => {
+  //   await usdt.connect(user).transfer(contract.address, usdtAmount);
+  //   await usdt.connect(contract).approve(compoundManager.address, usdtAmount);
+  //   // supply USDT tokens to compound
+  //   await compoundManager
+  //     .connect(contract)
+  //     .supplyStablecoin(USDT, usdtAmount, user.address);
+  //   // should be greater than 0
+  //   expect(await cUsdt.balanceOf(user.address)).to.gte(0);
+  // });
+
+  // ========================= REDEEM =============================
+
+  it("Should redeem ETH from Compound and give user a ETH balance", async () => {
+    // supply ETH to compound
+    await compoundManager
+      .connect(contract)
+      .supplyEth(user.address, { value: daiAmount });
+
+    const balance = await cEth.balanceOf(user.address);
+    
+    const balanceBefore = await waffle.provider.getBalance(user.address);
+    // redeem ETH from compound
+    await compoundManager.redeemEth(balance, true, user.address);
+    const balanceAfter = await waffle.provider.getBalance(user.address);
+
+    expect(balanceAfter).to.gte(balanceBefore);
   });
-
-
 });

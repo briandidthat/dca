@@ -2,7 +2,7 @@ const { expect } = require("chai");
 const { ethers, network } = require("hardhat");
 const { TOKEN_DETAILS, USDT_WHALE, WHALE } = require("./utils");
 
-const { DAI, USDC, USDT, WETH } = TOKEN_DETAILS;
+const { DAI, USDC, USDT, WETH } = TOKEN_DETAILS.networks.mainnet;
 
 describe("UniswapExchange", async () => {
   let accounts, dev, whale, usdtWhale;
@@ -14,7 +14,14 @@ describe("UniswapExchange", async () => {
 
   beforeEach(async () => {
     [dev, user, ...accounts] = await ethers.getSigners();
-    const Exchange = await ethers.getContractFactory("UniswapExchange", dev);
+    const Library = await ethers.getContractFactory("TokenLibrary");
+    const library = await Library.deploy();
+    await library.deployed();
+    const Exchange = await ethers.getContractFactory("UniswapExchange", dev, {
+      libraries: {
+        TokenLibrary: library.address,
+      },
+    });
     exchange = await Exchange.deploy();
     await exchange.deployed();
 

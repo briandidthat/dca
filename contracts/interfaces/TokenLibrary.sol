@@ -16,6 +16,10 @@ library TokenLibrary {
         pure
         returns (address cToken)
     {
+        if (_underlying == address(0)) {
+            return cETH;
+        }
+
         if (_underlying == DAI) {
             return cDAI;
         } else if (_underlying == USDC) {
