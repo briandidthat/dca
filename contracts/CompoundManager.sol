@@ -11,7 +11,7 @@ contract CompoundManager {
     event Supply(address indexed owner, address indexed asset, uint256 amount);
     event Redeeem(address indexed owner, address indexed asset, uint256 amount);
 
-    function supplyEth(address _owner) external payable returns (bool) {
+    function supplyETH(address _owner) external payable returns (bool) {
         address cTokenAddress = TokenLibrary.getCtokenAddress(address(0));
         ICETH cToken = ICETH(cTokenAddress);
 
@@ -24,7 +24,7 @@ contract CompoundManager {
         return true;
     }
 
-    function redeemEth(
+    function redeemETH(
         uint256 _amount,
         bool _redeemType,
         address payable _owner
