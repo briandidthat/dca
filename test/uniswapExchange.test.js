@@ -1,5 +1,6 @@
 const { expect } = require("chai");
 const { ethers, network } = require("hardhat");
+const { expectRevert } = require("@openzeppelin/test-helpers");
 const { TOKEN_DETAILS, USDT_WHALE, WHALE } = require("./utils");
 
 const { DAI, USDC, USDT, WETH } = TOKEN_DETAILS.networks.mainnet;
@@ -11,17 +12,20 @@ describe("UniswapExchange", async () => {
   const daiAmount = 100n * 10n ** 18n;
   const usdcAmount = 100n * 10n ** 6n;
   const usdtAmount = 100n * 10n ** 6n;
+  const ethAmount = 5n * 10n ** 18n;
 
   beforeEach(async () => {
     [dev, user, ...accounts] = await ethers.getSigners();
     const Library = await ethers.getContractFactory("TokenLibrary");
     const library = await Library.deploy();
     await library.deployed();
-    const Exchange = await ethers.getContractFactory("UniswapExchange", dev, {
+
+    const Exchange = await ethers.getContractFactory("UniswapExchange", {
       libraries: {
         TokenLibrary: library.address,
       },
     });
+
     exchange = await Exchange.deploy();
     await exchange.deployed();
 
@@ -83,5 +87,14 @@ describe("UniswapExchange", async () => {
     await exchange.connect(user).swapForWETH(usdtAmount, USDT);
 
     expect(await weth.balanceOf(user.address)).to.gte(balanceBefore);
+  });
+
+  it("swapForWETH: Should revert due to depositing incorrect coin", async () => {
+    await weth.connect(user).deposit({ value: ethAmount });
+    await weth.connect(user).approve(exchange.address, ethAmount);
+    await expectRevert(
+      exchange.connect(user).swapForWETH(ethAmount, WETH),
+      "Invalid token"
+    );
   });
 });
