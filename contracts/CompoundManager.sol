@@ -9,7 +9,7 @@ import "./interfaces/ICETH.sol";
 contract CompoundManager {
     event Logger(string message, address caller, uint256 amount);
     event Supply(address indexed owner, address indexed asset, uint256 amount);
-    event Redeeem(address indexed owner, address indexed asset, uint256 amount);
+    event Redeem(address indexed owner, address indexed asset, uint256 amount);
 
     function supplyETH(address _owner) external payable returns (bool) {
         address cTokenAddress = TokenLibrary.getCtokenAddress(address(0));
@@ -44,7 +44,7 @@ contract CompoundManager {
             redeemResult = cToken.redeemUnderlying(_amount);
         }
 
-        emit Redeeem(_owner, address(0), redeemResult);
+        emit Redeem(_owner, address(0), redeemResult);
 
         (bool success, ) = _owner.call{value: redeemResult}("");
 
@@ -73,32 +73,26 @@ contract CompoundManager {
 
         cToken.transfer(_owner, balance);
 
-        emit Supply(_owner, _underlying, mintResult);
+        emit Supply(address(_owner), _underlying, mintResult);
 
         return mintResult;
     }
 
     function redeemStablecoin(
         uint256 _amount,
-        bool redeemType,
         address _cToken,
         address _owner
     ) external {
         ICERC20 cToken = ICERC20(_cToken);
-
-        uint256 redeemResult;
-
-        if (redeemType == true) {
-            // redeem cToken balance
-            redeemResult = cToken.redeem(_amount);
-        } else {
-            // redeem based on amount of asset
-            redeemResult = cToken.redeemUnderlying(_amount);
-        }
+        require(
+            cToken.balanceOf(msg.sender) >= _amount,
+            "Insufficient balance"
+        );
+        uint256 redeemResult = cToken.redeem(_amount);
 
         require(redeemResult == 0, "There was an error redeeming");
 
-        emit Redeeem(_owner, _cToken, _amount);
+        emit Redeem(address(_owner), _cToken, _amount);
     }
 
     receive() external payable {}
