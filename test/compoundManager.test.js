@@ -2,12 +2,11 @@ const { expect } = require("chai");
 const { ethers, network, waffle } = require("hardhat");
 const { TOKEN_DETAILS, WHALE } = require("./utils");
 
-const { DAI, USDC, WETH, cDAI, cUSDC, cETH } =
-  TOKEN_DETAILS.networks.mainnet;
+const { DAI, USDC, WETH, cDAI, cUSDC, cETH } = TOKEN_DETAILS.networks.mainnet;
 
-describe("compoundManager", async () => {
+describe("compoundManager", () => {
   let compoundManager;
-  let dev, whale;
+  let whale;
   let weth, dai, usdc;
   let cEth, cUsdc, cDai;
 
@@ -109,7 +108,7 @@ describe("compoundManager", async () => {
     expect(balanceAfter).to.gte(balanceBefore);
   });
 
-  it("redeemStablecoin: Should redeem DAI successfully", async () => {
+  it("redeemStablecoin: Should redeem cDAI from Compound and return DAI to user", async () => {
     // deposit USDC into vault contract to be supplied to Compound
     await dai.connect(user).transfer(contract.address, daiAmount);
     await dai.connect(contract).approve(compoundManager.address, daiAmount);
@@ -122,12 +121,12 @@ describe("compoundManager", async () => {
     // redeem DAI from compound
     await compoundManager
       .connect(contract)
-      .redeemStablecoin(cTokenBalance, true, cDai.address, user.address);
+      .redeemStablecoin(cTokenBalance, cDai.address, user.address);
     // should be greater than deposited amount due to interest
     expect(await dai.balanceOf(user.address)).to.gte(daiAmount);
   });
 
-  it("redeemStablecoin: Should redeem USDC successfully", async () => {
+  it("redeemStablecoin: Should redeem cUSDC from Compound and return USDC to user", async () => {
     // deposit USDC into vault contract to be supplied to Compound
     await usdc.connect(user).transfer(contract.address, usdcAmount);
     await usdc.connect(contract).approve(compoundManager.address, usdcAmount);
@@ -136,13 +135,44 @@ describe("compoundManager", async () => {
       .connect(contract)
       .supplyStablecoin(USDC, usdcAmount, user.address);
 
-    let cTokenBalance = await cUsdc.balanceOf(contract.address);
+    const cTokenBalance = await cUsdc.balanceOf(contract.address);
 
     await compoundManager
       .connect(contract)
-      .redeemStablecoin(cTokenBalance, true, cUsdc.address, user.address);
+      .redeemStablecoin(cTokenBalance, cUsdc.address, user.address);
     // should be greater than 0
     expect(await usdc.balanceOf(user.address)).to.gte(usdcAmount);
+  });
+
+  // ========================= EVENTS ==============================
+  it("event: Supply", async () => {
+    // deposit USDC into vault contract to be supplied to Compound
+    await usdc.connect(user).transfer(contract.address, usdcAmount);
+    await usdc.connect(contract).approve(compoundManager.address, usdcAmount);
+
+    await expect(
+      compoundManager
+        .connect(contract)
+        .supplyStablecoin(USDC, usdcAmount, user.address)
+    ).to.emit(compoundManager, "Supply");
+  });
+
+  it("event: Redeem", async () => {
+    // deposit USDC into vault contract to be supplied to Compound
+    await usdc.connect(user).transfer(contract.address, usdcAmount);
+    await usdc.connect(contract).approve(compoundManager.address, usdcAmount);
+    // supply USDC tokens to compound
+    await compoundManager
+      .connect(contract)
+      .supplyStablecoin(USDC, usdcAmount, user.address);
+
+    const cTokenBalance = await cUsdc.balanceOf(contract.address);
+
+    await expect(
+      compoundManager
+        .connect(contract)
+        .redeemStablecoin(cTokenBalance, cUsdc.address, user.address)
+    ).to.emit(compoundManager, "Redeem");
   });
 
   // ========================= REVERT ==============================
