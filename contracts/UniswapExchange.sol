@@ -61,5 +61,6 @@ contract UniswapExchange is IUniswapExchange {
 
         // The call to `exactInputSingle` executes the swap.
         amountOut = swapRouter.exactInputSingle(params);
+        emit Swap(msg.sender, _stablecoin, amountOut);
     }
 }
