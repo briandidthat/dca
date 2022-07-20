@@ -16,6 +16,11 @@ contract Chamber is IChamber {
 
     mapping(address => uint256) balances;
 
+    modifier onlyOwner() {
+        require(msg.sender == owner);
+        _;
+    }
+
     constructor() {
         factory = msg.sender;
     }
@@ -45,7 +50,11 @@ contract Chamber is IChamber {
         emit Deposit(_asset, _amount);
     }
 
-    function withdraw(address _asset, uint256 _amount) external override {
+    function withdraw(address _asset, uint256 _amount)
+        external
+        override
+        onlyOwner
+    {
         require(
             IERC20(_asset).balanceOf(address(this)) >= _amount,
             "Insufficient balance"
@@ -68,7 +77,7 @@ contract Chamber is IChamber {
         emit Supply(address(0), msg.value);
     }
 
-    function redeemETH(uint256 _amount) external override {
+    function redeemETH(uint256 _amount) external override onlyOwner {
         require(balances[TokenLibrary.cETH] >= _amount);
         require(compoundManager.redeemETH(_amount, msg.sender));
 
