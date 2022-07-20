@@ -102,7 +102,7 @@ describe("compoundManager", () => {
     // redeem ETH from compound
     await compoundManager
       .connect(contract)
-      .redeemETH(cEthBalance, true, user.address);
+      .redeemETH(cEthBalance, user.address);
     const balanceAfter = await waffle.provider.getBalance(user.address);
 
     expect(balanceAfter).to.gte(balanceBefore);
@@ -121,7 +121,7 @@ describe("compoundManager", () => {
     // redeem DAI from compound
     await compoundManager
       .connect(contract)
-      .redeemStablecoin(cTokenBalance, cDai.address, user.address);
+      .redeemStablecoin(cDai.address, cTokenBalance, user.address);
     // should be greater than deposited amount due to interest
     expect(await dai.balanceOf(user.address)).to.gte(daiAmount);
   });
@@ -139,7 +139,7 @@ describe("compoundManager", () => {
 
     await compoundManager
       .connect(contract)
-      .redeemStablecoin(cTokenBalance, cUsdc.address, user.address);
+      .redeemStablecoin(cUsdc.address, cTokenBalance, user.address);
     // should be greater than 0
     expect(await usdc.balanceOf(user.address)).to.gte(usdcAmount);
   });
@@ -171,7 +171,7 @@ describe("compoundManager", () => {
     await expect(
       compoundManager
         .connect(contract)
-        .redeemStablecoin(cTokenBalance, cUsdc.address, user.address)
+        .redeemStablecoin(cUsdc.address, cTokenBalance, user.address)
     ).to.emit(compoundManager, "Redeem");
   });
 

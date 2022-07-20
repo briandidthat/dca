@@ -3,46 +3,46 @@ pragma solidity =0.7.6;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./interfaces/TokenLibrary.sol";
+import "./interfaces/ICompoundManager.sol";
 import "./interfaces/ICERC20.sol";
 import "./interfaces/ICETH.sol";
 
-contract CompoundManager {
-    event Logger(string message, address caller, uint256 amount);
-    event Supply(address indexed owner, address indexed asset, uint256 amount);
-    event Redeem(address indexed owner, address indexed asset, uint256 amount);
+contract CompoundManager is ICompoundManager {
+    address public owner;
 
-    function supplyETH(address _owner) external payable returns (bool) {
+    constructor() {
+        owner = msg.sender;
+    }
+
+    function supplyETH(address _owner)
+        external
+        payable
+        override
+        returns (bool)
+    {
         address cTokenAddress = TokenLibrary.getCtokenAddress(address(0));
         ICETH cToken = ICETH(cTokenAddress);
 
         emit Logger("Supplying ETH ", msg.sender, msg.value);
 
         cToken.mint{value: msg.value, gas: 250000}();
-        cToken.transfer(payable(_owner), cToken.balanceOf(address(this)));
+        cToken.transfer(_owner, cToken.balanceOf(address(this)));
 
         emit Supply(msg.sender, address(0), msg.value);
         return true;
     }
 
-    function redeemETH(
-        uint256 _amount,
-        bool _redeemType,
-        address payable _owner
-    ) external returns (bool) {
+    function redeemETH(uint256 _amount, address _owner)
+        external
+        override
+        returns (bool)
+    {
         address cTokenAddress = TokenLibrary.getCtokenAddress(address(0));
         ICETH cToken = ICETH(cTokenAddress);
 
         cToken.transferFrom(_owner, address(this), _amount);
 
-        uint256 redeemResult;
-
-        if (_redeemType) {
-            // redeem based on cToken balance
-            redeemResult = cToken.redeem(_amount);
-        } else {
-            // redeem based on ETH balance
-            redeemResult = cToken.redeemUnderlying(_amount);
-        }
+        uint256 redeemResult = cToken.redeem(_amount);
 
         emit Redeem(_owner, address(0), redeemResult);
 
@@ -55,7 +55,7 @@ contract CompoundManager {
         address _underlying,
         uint256 _amount,
         address _owner
-    ) external returns (uint256) {
+    ) external override returns (uint256) {
         require(
             IERC20(_underlying).allowance(msg.sender, address(this)) >= _amount,
             "Insufficient allowance"
@@ -79,10 +79,10 @@ contract CompoundManager {
     }
 
     function redeemStablecoin(
-        uint256 _amount,
         address _cToken,
+        uint256 _amount,
         address _owner
-    ) external {
+    ) external override {
         ICERC20 cToken = ICERC20(_cToken);
         require(
             cToken.balanceOf(msg.sender) >= _amount,

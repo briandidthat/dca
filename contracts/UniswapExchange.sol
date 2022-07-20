@@ -5,8 +5,9 @@ pragma abicoder v2;
 import "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
 import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 import "./interfaces/TokenLibrary.sol";
+import "./interfaces/IUniswapExchange.sol";
 
-contract UniswapExchange {
+contract UniswapExchange is IUniswapExchange {
     address public immutable owner;
 
     ISwapRouter public constant swapRouter =
@@ -27,27 +28,28 @@ contract UniswapExchange {
         _;
     }
 
-    function swapForWETH(uint256 _amountIn, address _token)
+    function swapForWETH(uint256 _amountIn, address _stablecoin)
         external
+        override
         returns (uint256 amountOut)
     {
-        require(TokenLibrary.isStableCoin(_token), "Invalid token");
+        require(TokenLibrary.isStableCoin(_stablecoin), "Invalid token");
 
-        // Transfer the specified amount of _token to this contract.
+        // Transfer the specified amount of _stablecoin to this contract.
         TransferHelper.safeTransferFrom(
-            _token,
+            _stablecoin,
             msg.sender,
             address(this),
             _amountIn
         );
 
-        TransferHelper.safeApprove(_token, address(swapRouter), _amountIn);
+        TransferHelper.safeApprove(_stablecoin, address(swapRouter), _amountIn);
 
         // Naively set amountOutMinimum to 0. In production, use an oracle or other data source to choose a safer value for amountOutMinimum.
         // We also set the sqrtPriceLimitx96 to be 0 to ensure we swap our exact input amount.
         ISwapRouter.ExactInputSingleParams memory params = ISwapRouter
             .ExactInputSingleParams({
-                tokenIn: _token,
+                tokenIn: _stablecoin,
                 tokenOut: WETH9,
                 fee: POOL_FEE,
                 recipient: msg.sender,
