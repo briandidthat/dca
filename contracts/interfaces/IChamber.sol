@@ -2,7 +2,24 @@
 pragma solidity =0.7.6;
 
 interface IChamber {
-  event Supply(address indexed asset, uint amount);
-  event Deposit(address indexed asset, uint amount);
-  event ExecuteSwap(address indexed asset, uint amount);
+    enum Strategy {
+        AUTOSEND,
+        AUTOSTAKE
+    }
+
+    event Supply(address indexed asset, uint256 amount);
+    event Deposit(address indexed asset, uint256 amount);
+    event Withdraw(address indexed asset, uint256 amount);
+    event Redeem(address indexed cToken, uint256 amount);
+    event ExecuteSwap(address indexed asset, uint256 amount);
+
+    function supplyETH() external payable;
+
+    function redeemETH(uint256 amount) external;
+
+    function buyETH(address asset, uint256 amount) external;
+
+    function deposit(address asset, uint256 amount) external;
+
+    function withdraw(address asset, uint256 amount) external;
 }

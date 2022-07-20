@@ -26,7 +26,7 @@ contract CompoundManager is ICompoundManager {
         emit Logger("Supplying ETH ", msg.sender, msg.value);
 
         cToken.mint{value: msg.value, gas: 250000}();
-        cToken.transfer(_owner, cToken.balanceOf(address(this)));
+        require(cToken.transfer(_owner, cToken.balanceOf(address(this))));
 
         emit Supply(msg.sender, address(0), msg.value);
         return true;
@@ -94,6 +94,4 @@ contract CompoundManager is ICompoundManager {
 
         emit Redeem(address(_owner), _cToken, _amount);
     }
-
-    receive() external payable {}
 }
