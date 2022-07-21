@@ -22,4 +22,10 @@ interface IChamber {
     function deposit(address asset, uint256 amount) external;
 
     function withdraw(address asset, uint256 amount) external;
+
+    function initialize(
+        address owner,
+        address compoundManager,
+        address _uniswapExchange
+    ) external;
 }

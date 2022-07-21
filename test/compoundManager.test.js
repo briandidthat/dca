@@ -12,6 +12,8 @@ describe("compoundManager", () => {
 
   const daiAmount = 100n * 10n ** 18n;
   const usdcAmount = 100n * 10n ** 6n;
+  const ethAmount = 5n * 10n ** 18n;
+
 
   beforeEach(async () => {
     [dev, user, contract, ...accounts] = await ethers.getSigners();
@@ -89,12 +91,12 @@ describe("compoundManager", () => {
 
   it("redeemETH: Should redeem cETH from Compound and return ETH to user", async () => {
     // deposit ETH in vault contract to be supplied to Compound
-    await user.sendTransaction({ to: contract.address, value: daiAmount });
+    await user.sendTransaction({ to: contract.address, value: ethAmount });
 
     // supply ETH to compound
     await compoundManager
       .connect(contract)
-      .supplyETH(user.address, { value: daiAmount });
+      .supplyETH(user.address, { value: ethAmount });
 
     const cEthBalance = await cEth.balanceOf(user.address);
     const balanceBefore = await waffle.provider.getBalance(user.address);

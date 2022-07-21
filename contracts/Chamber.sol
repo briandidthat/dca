@@ -6,9 +6,11 @@ import "./interfaces/IChamber.sol";
 import "./interfaces/ICompoundManager.sol";
 import "./interfaces/IUniswapExchange.sol";
 import "./interfaces/TokenLibrary.sol";
+import "./interfaces/Initializable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-contract Chamber is IChamber {
+
+contract Chamber is IChamber, Initializable {
     address public owner;
     address public factory;
     ICompoundManager internal compoundManager;
@@ -29,7 +31,7 @@ contract Chamber is IChamber {
         address _owner,
         address _compoundManager,
         address _uniswapExchange
-    ) external {
+    ) external override onlyOwner initializer {
         owner = _owner;
         compoundManager = ICompoundManager(_compoundManager);
         uniswapExchange = IUniswapExchange(_uniswapExchange);
@@ -84,7 +86,7 @@ contract Chamber is IChamber {
         emit Redeem(TokenLibrary.cETH, _amount);
     }
 
-    function buyETH(address _asset, uint _amount) external override {
+    function buyETH(address _asset, uint _amount) external override onlyOwner {
         require(
             IERC20(_asset).balanceOf(address(this)) >= _amount,
             "Please deposit stablecoins"
@@ -96,7 +98,7 @@ contract Chamber is IChamber {
 
         uint amountOut = uniswapExchange.swapForWETH(_amount, _asset);
 
-        emit ExecuteSwap(_asset, amountOut);
+        emit ExecuteSwap(TokenLibrary.WETH, amountOut);
     }
 
     receive() external payable {

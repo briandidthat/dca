@@ -1,0 +1,57 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+pragma solidity =0.7.6;
+pragma abicoder v2;
+
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/proxy/Clones.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "./Chamber.sol";
+import "./interfaces/IChamber.sol";
+
+contract ChamberFactory is Ownable {
+    uint256 public instances;
+    address public implementation;
+    address public compoundManager;
+    address public uniswapExchange;
+    mapping(address => ChamberDetails) public chambers;
+
+    event NewChamber(address indexed instance, address indexed owner);
+
+    struct ChamberDetails {
+        address instance;
+        address owner;
+        uint256 timestamp;
+    }
+
+    constructor(address _compoundManager, address _uniswapExchange) {
+        implementation = address(new Chamber());
+        compoundManager = _compoundManager;
+        uniswapExchange = _uniswapExchange;
+    }
+
+    function deployChamber() external returns (address instance) {
+        address clone = Clones.clone(implementation);
+        IChamber(clone).initialize(
+            msg.sender,
+            compoundManager,
+            uniswapExchange
+        );
+
+        ChamberDetails memory chamber = ChamberDetails({
+            instance: clone,
+            owner: msg.sender,
+            timestamp: block.timestamp
+        });
+
+        chambers[msg.sender] = chamber;
+        instances++;
+        instance = clone;
+
+        emit NewChamber(instance, msg.sender);
+    }
+
+    function getChamber(address owner) external view returns (ChamberDetails memory chamber) {
+      
+    }
+}
