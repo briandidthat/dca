@@ -1,12 +1,12 @@
 const { expect } = require("chai");
 const { ethers, network, waffle } = require("hardhat");
-const { TOKEN_DETAILS, WHALE } = require("./utils");
+const { TOKEN_DETAILS, WHALE, snapshot } = require("./utils");
 
 const { DAI, USDC, WETH, cDAI, cUSDC, cETH } = TOKEN_DETAILS.networks.mainnet;
 
 describe("compoundManager", () => {
   let compoundManager;
-  let whale;
+  let whale, contract;
   let weth, dai, usdc;
   let cEth, cUsdc, cDai;
 
@@ -14,29 +14,18 @@ describe("compoundManager", () => {
   const usdcAmount = 100n * 10n ** 6n;
   const ethAmount = 5n * 10n ** 18n;
 
-
   beforeEach(async () => {
     [dev, user, contract, ...accounts] = await ethers.getSigners();
-    const Library = await ethers.getContractFactory("TokenLibrary");
-    const library = await Library.deploy();
-    await library.deployed();
-
-    const CompoundManager = await ethers.getContractFactory("CompoundManager", {
-      libraries: {
-        TokenLibrary: library.address,
-      },
-    });
-
-    compoundManager = await CompoundManager.deploy();
+    const { contracts, tokens } = await snapshot();
+    compoundManager = await contracts.CompoundManager.deploy();
     await compoundManager.deployed();
 
-    dai = await ethers.getContractAt("IERC20", DAI);
-    weth = await ethers.getContractAt("IWETH", WETH);
-    usdc = await ethers.getContractAt("IERC20", USDC);
-
-    cDai = await ethers.getContractAt("ICERC20", cDAI);
-    cEth = await ethers.getContractAt("ICETH", cETH);
-    cUsdc = await ethers.getContractAt("ICERC20", cUSDC);
+    dai = tokens.dai;
+    weth = tokens.weth;
+    usdc = tokens.usdc;
+    cEth = tokens.cEth;
+    cDai = tokens.cDai;
+    cUsdc = tokens.cUsdc;
 
     // unlock USDC/DAI Whale account
     await network.provider.request({

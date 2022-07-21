@@ -21,6 +21,7 @@ contract ChamberFactory is Ownable {
     struct ChamberDetails {
         address instance;
         address owner;
+        bool initialized;
         uint256 timestamp;
     }
 
@@ -31,6 +32,10 @@ contract ChamberFactory is Ownable {
     }
 
     function deployChamber() external returns (address instance) {
+        require(
+            chambers[msg.sender].initialized != true,
+            "User already has a chamber"
+        );
         address clone = Clones.clone(implementation);
         IChamber(clone).initialize(
             msg.sender,
@@ -41,6 +46,7 @@ contract ChamberFactory is Ownable {
         ChamberDetails memory chamber = ChamberDetails({
             instance: clone,
             owner: msg.sender,
+            initialized: true,
             timestamp: block.timestamp
         });
 
@@ -51,7 +57,11 @@ contract ChamberFactory is Ownable {
         emit NewChamber(instance, msg.sender);
     }
 
-    function getChamber(address owner) external view returns (ChamberDetails memory chamber) {
-      
+    function getChamber(address _beneficiary)
+        external
+        view
+        returns (ChamberDetails memory chamber)
+    {
+        return chambers[_beneficiary];
     }
 }

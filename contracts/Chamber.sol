@@ -9,7 +9,6 @@ import "./interfaces/TokenLibrary.sol";
 import "./interfaces/Initializable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-
 contract Chamber is IChamber, Initializable {
     address public owner;
     address public factory;
@@ -23,6 +22,11 @@ contract Chamber is IChamber, Initializable {
         _;
     }
 
+    modifier onlyFactory() {
+        require(msg.sender == factory);
+        _;
+    }
+
     constructor() {
         factory = msg.sender;
     }
@@ -31,7 +35,7 @@ contract Chamber is IChamber, Initializable {
         address _owner,
         address _compoundManager,
         address _uniswapExchange
-    ) external override onlyOwner initializer {
+    ) external override onlyFactory initializer {
         owner = _owner;
         compoundManager = ICompoundManager(_compoundManager);
         uniswapExchange = IUniswapExchange(_uniswapExchange);

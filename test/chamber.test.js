@@ -1,6 +1,6 @@
 const { expect } = require("chai");
 const { ethers, network, waffle } = require("hardhat");
-const { TOKEN_DETAILS, WHALE } = require("./utils");
+const { TOKEN_DETAILS, WHALE, snapshot } = require("./utils");
 
 const { DAI, USDC, WETH, cDAI, cUSDC, cETH } = TOKEN_DETAILS.networks.mainnet;
 
@@ -8,6 +8,7 @@ describe("Chamber", () => {
   let accounts, dev, whale;
   let chamber;
   let weth, dai, usdc;
+  let cEth, cUsdc, cDai;
 
   const daiAmount = 100n * 10n ** 18n;
   const usdcAmount = 100n * 10n ** 6n;
@@ -15,18 +16,17 @@ describe("Chamber", () => {
 
   beforeEach(async () => {
     [dev, user, ...accounts] = await ethers.getSigners();
-    const Library = await ethers.getContractFactory("TokenLibrary");
-    const library = await Library.deploy();
-    await library.deployed();
+    const { contracts, tokens } = await snapshot();
 
-    const Chamber = await ethers.getContractFactory("Chamber");
-
-    chamber = await Chamber.deploy();
+    chamber = await contracts.Chamber.deploy();
     await chamber.deployed();
 
-    dai = await ethers.getContractAt("IERC20", DAI);
-    weth = await ethers.getContractAt("IWETH", WETH);
-    usdc = await ethers.getContractAt("IERC20", USDC);
+    dai = tokens.dai;
+    weth = tokens.weth;
+    usdc = tokens.usdc;
+    cEth = tokens.cEth;
+    cDai = tokens.cDai;
+    cUsdc = tokens.cUsdc;
 
     // unlock USDC/DAI Whale account
     await network.provider.request({
