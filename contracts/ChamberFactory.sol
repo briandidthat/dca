@@ -2,12 +2,12 @@
 pragma solidity =0.7.6;
 pragma abicoder v2;
 
+import "./Chamber.sol";
+import "./interfaces/IChamber.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/proxy/Clones.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "./Chamber.sol";
-import "./interfaces/IChamber.sol";
 
 contract ChamberFactory is Ownable {
     uint256 public instances;
@@ -43,6 +43,8 @@ contract ChamberFactory is Ownable {
             uniswapExchange
         );
 
+        emit NewChamber(clone, msg.sender);
+
         ChamberDetails memory chamber = ChamberDetails({
             instance: clone,
             owner: msg.sender,
@@ -53,8 +55,6 @@ contract ChamberFactory is Ownable {
         chambers[msg.sender] = chamber;
         instances++;
         instance = clone;
-
-        emit NewChamber(instance, msg.sender);
     }
 
     function getChamber(address _beneficiary)

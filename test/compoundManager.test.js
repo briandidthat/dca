@@ -1,6 +1,6 @@
 const { expect } = require("chai");
 const { ethers, network, waffle } = require("hardhat");
-const { TOKEN_DETAILS, WHALE, snapshot } = require("./utils");
+const { TOKEN_DETAILS, WHALE, contractFixture } = require("./utils");
 
 const { DAI, USDC, WETH, cDAI, cUSDC, cETH } = TOKEN_DETAILS.networks.mainnet;
 
@@ -16,7 +16,7 @@ describe("compoundManager", () => {
 
   beforeEach(async () => {
     [dev, user, contract, ...accounts] = await ethers.getSigners();
-    const { contracts, tokens } = await snapshot();
+    const { contracts, tokens } = await contractFixture();
     compoundManager = await contracts.CompoundManager.deploy();
     await compoundManager.deployed();
 

@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity =0.7.6;
+pragma abicoder v2;
 
 interface IChamber {
-    enum Strategy {
-        AUTOSEND,
-        AUTOSTAKE
-    }
-
     event Supply(address indexed asset, uint256 amount);
     event Deposit(address indexed asset, uint256 amount);
     event Withdraw(address indexed asset, uint256 amount);
     event Redeem(address indexed cToken, uint256 amount);
     event ExecuteSwap(address indexed asset, uint256 amount);
+
+    function getOwner() external view returns (address);
+
+    function getFactory() external view returns (address);
 
     function supplyETH() external payable;
 

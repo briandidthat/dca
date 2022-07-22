@@ -23,7 +23,7 @@ const TOKEN_DETAILS = {
 const WHALE = "0x7a8edc710ddeadddb0b539de83f3a306a621e823";
 const USDT_WHALE = "0xa929022c9107643515f5c777ce9a910f0d1e490c";
 
-const snapshot = async () => {
+const contractFixture = async () => {
   const Library = await ethers.getContractFactory("TokenLibrary");
   const library = await Library.deploy();
   await library.deployed();
@@ -36,7 +36,7 @@ const snapshot = async () => {
     },
   });
 
-  const Exchange = await ethers.getContractFactory("UniswapExchange", {
+  const UniswapExchange = await ethers.getContractFactory("UniswapExchange", {
     libraries: {
       TokenLibrary: library.address,
     },
@@ -55,7 +55,7 @@ const snapshot = async () => {
       Chamber,
       ChamberFactory,
       CompoundManager,
-      Exchange,
+      UniswapExchange,
     },
     tokens: {
       dai,
@@ -69,7 +69,7 @@ const snapshot = async () => {
 };
 
 module.exports = {
-  snapshot,
+  contractFixture,
   TOKEN_DETAILS,
   WHALE,
   USDT_WHALE,

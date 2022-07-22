@@ -1,11 +1,11 @@
 const { expect } = require("chai");
 const { ethers, network } = require("hardhat");
 const { expectRevert } = require("@openzeppelin/test-helpers");
-const { TOKEN_DETAILS, USDT_WHALE, WHALE, snapshot } = require("./utils");
+const { TOKEN_DETAILS, WHALE, contractFixture } = require("./utils");
 
-const { DAI, USDC, USDT, WETH } = TOKEN_DETAILS.networks.mainnet;
+const { DAI, USDC, WETH } = TOKEN_DETAILS.networks.mainnet;
 
-describe("UniswapExchange", async () => {
+describe("UniswapExchange", () => {
   let accounts, dev, whale;
   let exchange;
   let weth, dai, usdc;
@@ -15,13 +15,13 @@ describe("UniswapExchange", async () => {
 
   beforeEach(async () => {
     [dev, user, ...accounts] = await ethers.getSigners();
-    const { contracts, tokens } = await snapshot();
+    const { contracts, tokens } = await contractFixture();
 
     dai = tokens.dai;
     weth = tokens.weth;
     usdc = tokens.usdc;
 
-    exchange = await contracts.Exchange.deploy();
+    exchange = await contracts.UniswapExchange.deploy();
     await exchange.deployed();
 
     // unlock USDC/DAI Whale account

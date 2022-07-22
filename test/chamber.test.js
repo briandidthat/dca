@@ -1,8 +1,6 @@
 const { expect } = require("chai");
 const { ethers, network, waffle } = require("hardhat");
-const { TOKEN_DETAILS, WHALE, snapshot } = require("./utils");
-
-const { DAI, USDC, WETH, cDAI, cUSDC, cETH } = TOKEN_DETAILS.networks.mainnet;
+const { WHALE, contractFixture } = require("./utils");
 
 describe("Chamber", () => {
   let accounts, dev, whale;
@@ -16,7 +14,10 @@ describe("Chamber", () => {
 
   beforeEach(async () => {
     [dev, user, ...accounts] = await ethers.getSigners();
-    const { contracts, tokens } = await snapshot();
+    const { contracts, tokens } = await contractFixture();
+
+    chamberFactory = await contracts.ChamberFactory.deploy();
+    await chamberFactory.deployed();
 
     chamber = await contracts.Chamber.deploy();
     await chamber.deployed();
@@ -41,8 +42,6 @@ describe("Chamber", () => {
     await usdc.connect(whale).transfer(user.address, usdcAmount);
   });
 
-  it("initialize: Should initialize chamber with user as owner", async () => {});
-
   it("deposit: Should deposit DAI into chamber and update balance", async () => {});
 
   it("deposit: Should deposit USDC into chamber and update balance", async () => {});
@@ -50,4 +49,6 @@ describe("Chamber", () => {
   it("withdraw: Should withdraw DAI from chamber", async () => {});
 
   it("withdraw: Should withdraw USDC from chamber", async () => {});
+
+  it("withdraw: Should withdraw ETH from chamber", async () => {});
 });

@@ -18,12 +18,12 @@ contract Chamber is IChamber, Initializable {
     mapping(address => uint256) balances;
 
     modifier onlyOwner() {
-        require(msg.sender == owner);
+        require(msg.sender == owner, "Restricted to Owner");
         _;
     }
 
     modifier onlyFactory() {
-        require(msg.sender == factory);
+        require(msg.sender == factory, "Restricted to Factory");
         _;
     }
 
@@ -35,7 +35,7 @@ contract Chamber is IChamber, Initializable {
         address _owner,
         address _compoundManager,
         address _uniswapExchange
-    ) external override onlyFactory initializer {
+    ) external override initializer {
         owner = _owner;
         compoundManager = ICompoundManager(_compoundManager);
         uniswapExchange = IUniswapExchange(_uniswapExchange);
@@ -103,6 +103,14 @@ contract Chamber is IChamber, Initializable {
         uint amountOut = uniswapExchange.swapForWETH(_amount, _asset);
 
         emit ExecuteSwap(TokenLibrary.WETH, amountOut);
+    }
+
+    function getOwner() external view override returns (address) {
+        return owner;
+    }
+
+    function getFactory() external view override returns (address) {
+        return factory;
     }
 
     receive() external payable {
