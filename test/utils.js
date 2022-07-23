@@ -23,6 +23,56 @@ const TOKEN_DETAILS = {
 const WHALE = "0x7a8edc710ddeadddb0b539de83f3a306a621e823";
 const USDT_WHALE = "0xa929022c9107643515f5c777ce9a910f0d1e490c";
 
+const tokenFixture = async () => {
+  const dai = await ethers.getContractAt("IERC20", DAI);
+  const weth = await ethers.getContractAt("IWETH", WETH);
+  const usdc = await ethers.getContractAt("IERC20", USDC);
+
+  const cDai = await ethers.getContractAt("ICERC20", cDAI);
+  const cEth = await ethers.getContractAt("ICETH", cETH);
+  const cUsdc = await ethers.getContractAt("ICERC20", cUSDC);
+
+  return { dai, weth, usdc, cDai, cEth, cUsdc };
+};
+
+const uniswapExchangeFixture = async () => {
+  const Library = await ethers.getContractFactory("TokenLibrary");
+  const library = await Library.deploy();
+  await library.deployed();
+
+  const UniswapExchange = await ethers.getContractFactory("UniswapExchange", {
+    libraries: {
+      TokenLibrary: library.address,
+    },
+  });
+
+  const uniswapExchange = await UniswapExchange.deploy();
+  await uniswapExchange.deployed();
+
+  const tokens = await tokenFixture();
+
+  return { uniswapExchange, tokens };
+};
+
+const compoundManagerFixture = async () => {
+  const Library = await ethers.getContractFactory("TokenLibrary");
+  const library = await Library.deploy();
+  await library.deployed();
+
+  const CompoundManager = await ethers.getContractFactory("CompoundManager", {
+    libraries: {
+      TokenLibrary: library.address,
+    },
+  });
+
+  const compoundManager = await CompoundManager.deploy();
+  await compoundManager.deployed();
+
+  const tokens = await tokenFixture();
+
+  return { compoundManager, tokens };
+};
+
 const contractFixture = async () => {
   const Library = await ethers.getContractFactory("TokenLibrary");
   const library = await Library.deploy();
@@ -42,6 +92,21 @@ const contractFixture = async () => {
     },
   });
 
+  const compoundManager = await CompoundManager.deploy();
+  await compoundManager.deployed();
+
+  const uniswapExchange = await UniswapExchange.deploy();
+  await uniswapExchange.deployed();
+
+  const chamberFactory = await ChamberFactory.deploy(
+    compoundManager.address,
+    uniswapExchange.address
+  );
+  await chamberFactory.deployed();
+
+  const chamber = await Chamber.deploy();
+  await chamber.deployed();
+
   const dai = await ethers.getContractAt("IERC20", DAI);
   const weth = await ethers.getContractAt("IWETH", WETH);
   const usdc = await ethers.getContractAt("IERC20", USDC);
@@ -52,10 +117,14 @@ const contractFixture = async () => {
 
   return {
     contracts: {
-      Chamber,
-      ChamberFactory,
-      CompoundManager,
-      UniswapExchange,
+      // Chamber,
+      // ChamberFactory,
+      // CompoundManager,
+      // UniswapExchange,
+      compoundManager,
+      uniswapExchange,
+      chamberFactory,
+      chamber,
     },
     tokens: {
       dai,
@@ -69,6 +138,8 @@ const contractFixture = async () => {
 };
 
 module.exports = {
+  uniswapExchangeFixture,
+  compoundManagerFixture,
   contractFixture,
   TOKEN_DETAILS,
   WHALE,

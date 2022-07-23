@@ -1,9 +1,7 @@
 const { expect } = require("chai");
 const { ethers, network } = require("hardhat");
 const { expectRevert } = require("@openzeppelin/test-helpers");
-const { TOKEN_DETAILS, WHALE, contractFixture } = require("./utils");
-
-const { DAI, USDC, WETH } = TOKEN_DETAILS.networks.mainnet;
+const { WHALE, uniswapExchangeFixture } = require("./utils");
 
 describe("UniswapExchange", () => {
   let accounts, dev, whale;
@@ -15,14 +13,13 @@ describe("UniswapExchange", () => {
 
   beforeEach(async () => {
     [dev, user, ...accounts] = await ethers.getSigners();
-    const { contracts, tokens } = await contractFixture();
+    const { uniswapExchange, tokens } = await uniswapExchangeFixture();
 
     dai = tokens.dai;
     weth = tokens.weth;
     usdc = tokens.usdc;
 
-    exchange = await contracts.UniswapExchange.deploy();
-    await exchange.deployed();
+    exchange = uniswapExchange;
 
     // unlock USDC/DAI Whale account
     await network.provider.request({
@@ -50,7 +47,7 @@ describe("UniswapExchange", () => {
   it("swapForWETH: Should swap 100 DAI for WETH", async () => {
     const balanceBefore = await weth.balanceOf(user.address);
     await dai.connect(user).approve(exchange.address, daiAmount);
-    await exchange.connect(user).swapForWETH(daiAmount, DAI);
+    await exchange.connect(user).swapForWETH(daiAmount, dai.address);
 
     expect(await weth.balanceOf(user.address)).to.gte(balanceBefore);
   });
@@ -58,7 +55,7 @@ describe("UniswapExchange", () => {
   it("swapForWETH: Should swap 100 USDC for WETH", async () => {
     const balanceBefore = await weth.balanceOf(user.address);
     await usdc.connect(user).approve(exchange.address, usdcAmount);
-    await exchange.connect(user).swapForWETH(usdcAmount, USDC);
+    await exchange.connect(user).swapForWETH(usdcAmount, usdc.address);
 
     expect(await weth.balanceOf(user.address)).to.gte(balanceBefore);
   });
@@ -67,7 +64,7 @@ describe("UniswapExchange", () => {
     await weth.connect(user).deposit({ value: ethAmount });
     await weth.connect(user).approve(exchange.address, ethAmount);
     await expectRevert(
-      exchange.connect(user).swapForWETH(ethAmount, WETH),
+      exchange.connect(user).swapForWETH(ethAmount, weth.address),
       "Invalid token"
     );
   });
