@@ -16,12 +16,7 @@ describe("Chamber", () => {
     [dev, user, ...accounts] = await ethers.getSigners();
     const { contracts, tokens } = await contractFixture();
 
-    chamberFactory = await contracts.ChamberFactory.deploy();
-    await chamberFactory.deployed();
-
-    chamber = await contracts.Chamber.deploy();
-    await chamber.deployed();
-
+    chamber = contracts.chamber;
     dai = tokens.dai;
     weth = tokens.weth;
     usdc = tokens.usdc;

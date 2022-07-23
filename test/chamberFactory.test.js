@@ -9,18 +9,10 @@ describe("ChamberFactory", () => {
   beforeEach(async () => {
     [dev, user, ...accounts] = await ethers.getSigners();
     const { contracts } = await contractFixture();
-
-    compoundManager = await contracts.CompoundManager.deploy();
-    await compoundManager.deployed();
-
-    uniswapExchange = await contracts.UniswapExchange.deploy();
-    await uniswapExchange.deployed();
-
-    chamberFactory = await contracts.ChamberFactory.deploy(
-      compoundManager.address,
-      uniswapExchange.address
-    );
-    await chamberFactory.deployed();
+    chamber = contracts.chamber;
+    chamberFactory = contracts.chamberFactory;
+    compoundManager = contracts.compoundManager;
+    uniswapExchange = contracts.uniswapExchange;
 
     let tx = await chamberFactory.connect(user).deployChamber();
     let receipt = await tx.wait();

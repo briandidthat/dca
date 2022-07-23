@@ -1,8 +1,6 @@
 const { expect } = require("chai");
 const { ethers, network, waffle } = require("hardhat");
-const { TOKEN_DETAILS, WHALE, contractFixture } = require("./utils");
-
-const { DAI, USDC, WETH, cDAI, cUSDC, cETH } = TOKEN_DETAILS.networks.mainnet;
+const { WHALE, compoundManagerFixture } = require("./utils");
 
 describe("compoundManager", () => {
   let compoundManager;
@@ -16,9 +14,10 @@ describe("compoundManager", () => {
 
   beforeEach(async () => {
     [dev, user, contract, ...accounts] = await ethers.getSigners();
-    const { contracts, tokens } = await contractFixture();
-    compoundManager = await contracts.CompoundManager.deploy();
-    await compoundManager.deployed();
+    let snapshot = await compoundManagerFixture();
+
+    compoundManager = snapshot.compoundManager;
+    let tokens = snapshot.tokens;
 
     dai = tokens.dai;
     weth = tokens.weth;
@@ -59,7 +58,7 @@ describe("compoundManager", () => {
     // supply DAI tokens to compound
     await compoundManager
       .connect(contract)
-      .supplyStablecoin(DAI, daiAmount, user.address);
+      .supplyStablecoin(dai.address, daiAmount, user.address);
     // should be greater than 0
     expect(await cDai.balanceOf(user.address)).to.gte(0);
   });
@@ -71,7 +70,7 @@ describe("compoundManager", () => {
     // supply USDC tokens to compound
     await compoundManager
       .connect(contract)
-      .supplyStablecoin(USDC, usdcAmount, user.address);
+      .supplyStablecoin(usdc.address, usdcAmount, user.address);
     // should be greater than 0
     expect(await cUsdc.balanceOf(user.address)).to.gte(0);
   });
@@ -106,7 +105,7 @@ describe("compoundManager", () => {
     // supply DAI tokens to compound
     await compoundManager
       .connect(contract)
-      .supplyStablecoin(DAI, daiAmount, user.address);
+      .supplyStablecoin(dai.address, daiAmount, user.address);
 
     let cTokenBalance = await cDai.balanceOf(contract.address);
     // redeem DAI from compound
@@ -124,7 +123,7 @@ describe("compoundManager", () => {
     // supply USDC tokens to compound
     await compoundManager
       .connect(contract)
-      .supplyStablecoin(USDC, usdcAmount, user.address);
+      .supplyStablecoin(usdc.address, usdcAmount, user.address);
 
     const cTokenBalance = await cUsdc.balanceOf(contract.address);
 
@@ -144,7 +143,7 @@ describe("compoundManager", () => {
     await expect(
       compoundManager
         .connect(contract)
-        .supplyStablecoin(USDC, usdcAmount, user.address)
+        .supplyStablecoin(usdc.address, usdcAmount, user.address)
     ).to.emit(compoundManager, "Supply");
   });
 
@@ -155,7 +154,7 @@ describe("compoundManager", () => {
     // supply USDC tokens to compound
     await compoundManager
       .connect(contract)
-      .supplyStablecoin(USDC, usdcAmount, user.address);
+      .supplyStablecoin(usdc.address, usdcAmount, user.address);
 
     const cTokenBalance = await cUsdc.balanceOf(contract.address);
 
