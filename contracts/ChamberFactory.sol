@@ -10,11 +10,11 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract ChamberFactory is Ownable {
-    uint256 public instances;
     address public implementation;
     address public compoundManager;
     address public uniswapExchange;
-    mapping(address => ChamberDetails) public chambers;
+    uint256 private instances;
+    mapping(address => ChamberDetails) private chambers;
 
     event NewChamber(address indexed instance, address indexed owner);
 
@@ -63,5 +63,9 @@ contract ChamberFactory is Ownable {
         returns (ChamberDetails memory chamber)
     {
         return chambers[_beneficiary];
+    }
+
+    function getInstanceCount() external view returns (uint count) {
+        count = instances;
     }
 }

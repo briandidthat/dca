@@ -117,10 +117,6 @@ const contractFixture = async () => {
 
   return {
     contracts: {
-      // Chamber,
-      // ChamberFactory,
-      // CompoundManager,
-      // UniswapExchange,
       compoundManager,
       uniswapExchange,
       chamberFactory,
