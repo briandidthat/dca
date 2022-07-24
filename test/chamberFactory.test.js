@@ -1,6 +1,6 @@
 const { expect } = require("chai");
-const { ethers, network } = require("hardhat");
-const { WHALE, contractFixture } = require("./utils");
+const { ethers } = require("hardhat");
+const { contractFixture } = require("./utils");
 
 describe("ChamberFactory", () => {
   let accounts, dev;
@@ -9,6 +9,7 @@ describe("ChamberFactory", () => {
   beforeEach(async () => {
     [dev, user, ...accounts] = await ethers.getSigners();
     const { contracts } = await contractFixture();
+
     chamber = contracts.chamber;
     chamberFactory = contracts.chamberFactory;
     compoundManager = contracts.compoundManager;
@@ -17,6 +18,7 @@ describe("ChamberFactory", () => {
     let tx = await chamberFactory.connect(user).deployChamber();
     let receipt = await tx.wait();
 
+    // get the chamber we just deployed using the address from logs
     chamber = await ethers.getContractAt(
       "IChamber",
       receipt.events[0].args.instance
@@ -28,14 +30,14 @@ describe("ChamberFactory", () => {
     expect(owner).to.equal(user.address);
   });
 
-  it("deploy: Event - Should emit a NewChamber event on deployment", async () => {
+  it("deployChamber: Event - Should emit a NewChamber event on deployment", async () => {
     await expect(chamberFactory.connect(dev).deployChamber()).to.emit(
       chamberFactory,
       "NewChamber"
     );
   });
 
-  it("deploy: Revert - Should revert due to user having a chamber already", async () => {
+  it("deployChamber: Revert - Should revert due to user having a chamber already", async () => {
     await expect(
       chamberFactory.connect(user).deployChamber()
     ).to.be.revertedWith("User already has a chamber");
@@ -45,5 +47,11 @@ describe("ChamberFactory", () => {
     const details = await chamberFactory.getChamber(user.address);
     expect(details.owner).to.equal(user.address);
     expect(details.instance).to.equal(chamber.address);
+    expect(details.initialized).to.equal(true);
+  });
+
+  it("getInstanceCount: Should return 1 as count since we deployed 1 chamber", async () => {
+    const instances = await chamberFactory.getInstanceCount();
+    expect(instances).to.equal(1);
   });
 });
