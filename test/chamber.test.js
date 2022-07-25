@@ -141,4 +141,20 @@ describe("Chamber", () => {
 
     expect(cEthBalance).to.be.gt(0);
   });
+
+  // ========================= REDEEM ETH =============================
+
+  it("redeemETH: Should redeem ETH from compound", async () => {
+    await user.sendTransaction({ to: chamber.address, value: ethAmount });
+    await chamber.connect(user).supplyETH(ethAmount);
+
+    let cEthBalance = await cEth.balanceOf(chamber.address);
+    let balanceBefore = await waffle.provider.getBalance(chamber.address);
+
+    await chamber.connect(user).redeemETH(cEthBalance);
+
+    let balanceAfter = await waffle.provider.getBalance(chamber.address);
+
+    expect(balanceAfter).to.be.gt(balanceBefore);
+  });
 });

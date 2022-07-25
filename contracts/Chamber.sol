@@ -90,8 +90,8 @@ contract Chamber is IChamber, Initializable {
     }
 
     function redeemETH(uint256 _amount) external override onlyOwner {
-        require(balances[TokenLibrary.cETH] >= _amount);
-        require(compoundManager.redeemETH(_amount, msg.sender));
+        require(balances[TokenLibrary.cETH] >= _amount, "Insufficient balance");
+        require(compoundManager.redeemETH(_amount, address(this)));
 
         emit Redeem(WETH, _amount);
     }
