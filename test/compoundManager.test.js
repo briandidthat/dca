@@ -60,7 +60,7 @@ describe("compoundManager", () => {
       .connect(contract)
       .supplyStablecoin(dai.address, daiAmount, user.address);
     // should be greater than 0
-    expect(await cDai.balanceOf(user.address)).to.gte(0);
+    expect(await cDai.balanceOf(user.address)).to.gt(0);
   });
 
   it("supplyStablecoin: Should deposit USDC on Compound and give user a cUSDC balance", async () => {
@@ -72,7 +72,7 @@ describe("compoundManager", () => {
       .connect(contract)
       .supplyStablecoin(usdc.address, usdcAmount, user.address);
     // should be greater than 0
-    expect(await cUsdc.balanceOf(user.address)).to.gte(0);
+    expect(await cUsdc.balanceOf(user.address)).to.gt(0);
   });
 
   // ========================= REDEEM =============================
@@ -113,7 +113,7 @@ describe("compoundManager", () => {
       .connect(contract)
       .redeemStablecoin(cDai.address, cTokenBalance, user.address);
     // should be greater than deposited amount due to interest
-    expect(await dai.balanceOf(user.address)).to.gte(daiAmount);
+    expect(await dai.balanceOf(user.address)).to.gt(daiAmount);
   });
 
   it("redeemStablecoin: Should redeem cUSDC from Compound and return USDC to user", async () => {
@@ -131,7 +131,7 @@ describe("compoundManager", () => {
       .connect(contract)
       .redeemStablecoin(cUsdc.address, cTokenBalance, user.address);
     // should be greater than 0
-    expect(await usdc.balanceOf(user.address)).to.gte(usdcAmount);
+    expect(await usdc.balanceOf(user.address)).to.gt(usdcAmount);
   });
 
   // ========================= EVENTS ==============================
