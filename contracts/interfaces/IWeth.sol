@@ -10,5 +10,4 @@ interface IWETH is IERC20 {
 
     /// @notice Withdraw wrapped ether to get ether
     function withdraw(uint256) external;
-    /// @notice Approve token spending for contract 
 }

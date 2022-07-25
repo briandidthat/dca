@@ -17,11 +17,15 @@ interface IChamber {
 
     function redeemETH(uint256 amount) external;
 
-    function buyETH(address asset, uint256 amount) external;
+    function buyETH(address asset, uint256 amount) external returns (uint256);
 
     function deposit(address asset, uint256 amount) external;
 
     function withdraw(address asset, uint256 amount) external;
+
+    function withdrawETH(uint256 amount) external returns (bool);
+
+    function balanceOf(address asset) external view returns (uint);
 
     function initialize(
         address owner,

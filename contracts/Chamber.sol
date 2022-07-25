@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity =0.7.6;
 
+import "./interfaces/IWETH.sol";
 import "./interfaces/ICETH.sol";
 import "./interfaces/IChamber.sol";
 import "./interfaces/ICompoundManager.sol";
@@ -10,12 +11,13 @@ import "./interfaces/Initializable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract Chamber is IChamber, Initializable {
-    address public owner;
+    address private owner;
     address public factory;
     ICompoundManager internal compoundManager;
     IUniswapExchange internal uniswapExchange;
-
     mapping(address => uint256) balances;
+
+    address public constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
 
     modifier onlyOwner() {
         require(msg.sender == owner, "Restricted to Owner");
@@ -66,7 +68,7 @@ contract Chamber is IChamber, Initializable {
             "Insufficient balance"
         );
 
-        require(IERC20(_asset).transferFrom(address(this), owner, _amount));
+        require(IERC20(_asset).transfer(owner, _amount));
 
         balances[_asset] -= _amount;
 
@@ -79,6 +81,7 @@ contract Chamber is IChamber, Initializable {
         );
 
         balances[TokenLibrary.cETH] += msg.value;
+        balances[WETH] -= msg.value;
 
         emit Supply(address(0), msg.value);
     }
@@ -87,22 +90,35 @@ contract Chamber is IChamber, Initializable {
         require(balances[TokenLibrary.cETH] >= _amount);
         require(compoundManager.redeemETH(_amount, msg.sender));
 
-        emit Redeem(TokenLibrary.cETH, _amount);
+        emit Redeem(WETH, _amount);
     }
 
-    function buyETH(address _asset, uint _amount) external override onlyOwner {
+    function buyETH(address _asset, uint _amount)
+        external
+        override
+        onlyOwner
+        returns (uint256)
+    {
         require(
             IERC20(_asset).balanceOf(address(this)) >= _amount,
             "Please deposit stablecoins"
         );
-        require(
-            IERC20(_asset).allowance(owner, address(this)) >= _amount,
-            "Insufficient allowance"
-        );
+
+        if (
+            IERC20(_asset).allowance(address(this), address(uniswapExchange)) <
+            _amount
+        ) {
+            IERC20(_asset).approve(address(uniswapExchange), _amount);
+        }
 
         uint amountOut = uniswapExchange.swapForWETH(_amount, _asset);
+        balances[address(0)] += amountOut;
 
-        emit ExecuteSwap(TokenLibrary.WETH, amountOut);
+        IWETH(WETH).withdraw(amountOut);
+
+        emit ExecuteSwap(WETH, amountOut);
+
+        return amountOut;
     }
 
     function getOwner() external view override returns (address) {
@@ -111,6 +127,25 @@ contract Chamber is IChamber, Initializable {
 
     function getFactory() external view override returns (address) {
         return factory;
+    }
+
+    function balanceOf(address _asset) external view override returns (uint) {
+        return balances[_asset];
+    }
+
+    function withdrawETH(uint256 _amount)
+        external
+        override
+        onlyOwner
+        returns (bool)
+    {
+        require(address(this).balance >= _amount, "Insufficient balance");
+
+        payable(owner).transfer(_amount);
+
+        emit Withdraw(address(0), _amount);
+
+        return true;
     }
 
     receive() external payable {
