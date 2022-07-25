@@ -47,7 +47,7 @@ describe("compoundManager", () => {
     const balance = await cEth.balanceOf(user.address);
 
     // should be greater than 0
-    expect(balance).to.gte(0);
+    expect(balance).to.be.gte(0);
   });
 
   it("supplyStablecoin: Should deposit DAI on Compound and give user a cDAI balance", async () => {
@@ -70,7 +70,7 @@ describe("compoundManager", () => {
       .connect(contract)
       .supplyStablecoin(usdc.address, usdcAmount, user.address);
     // should be greater than 0
-    expect(await cUsdc.balanceOf(user.address)).to.gt(0);
+    expect(await cUsdc.balanceOf(user.address)).to.be.gt(0);
   });
 
   // ========================= REDEEM =============================
@@ -93,7 +93,7 @@ describe("compoundManager", () => {
       .redeemETH(cEthBalance, user.address);
     const balanceAfter = await waffle.provider.getBalance(user.address);
 
-    expect(balanceAfter).to.gte(balanceBefore);
+    expect(balanceAfter).to.be.gte(balanceBefore);
   });
 
   it("redeemStablecoin: Should redeem cDAI from Compound and return DAI to user", async () => {
@@ -111,7 +111,7 @@ describe("compoundManager", () => {
       .connect(contract)
       .redeemStablecoin(cDai.address, cTokenBalance, user.address);
     // should be greater than deposited amount due to interest
-    expect(await dai.balanceOf(user.address)).to.gt(daiAmount);
+    expect(await dai.balanceOf(user.address)).to.be.gt(daiAmount);
   });
 
   it("redeemStablecoin: Should redeem cUSDC from Compound and return USDC to user", async () => {
@@ -129,7 +129,7 @@ describe("compoundManager", () => {
       .connect(contract)
       .redeemStablecoin(cUsdc.address, cTokenBalance, user.address);
     // should be greater than 0
-    expect(await usdc.balanceOf(user.address)).to.gt(usdcAmount);
+    expect(await usdc.balanceOf(user.address)).to.be.gt(usdcAmount);
   });
 
   // ========================= EVENTS ==============================

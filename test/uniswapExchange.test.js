@@ -39,8 +39,8 @@ describe("UniswapExchange", () => {
   });
 
   it("Should give the user address 100 DAI, 100 USDC to trade", async () => {
-    expect(await dai.balanceOf(user.address)).to.gte(daiAmount);
-    expect(await usdc.balanceOf(user.address)).to.gte(usdcAmount);
+    expect(await dai.balanceOf(user.address)).to.be.gte(daiAmount);
+    expect(await usdc.balanceOf(user.address)).to.be.gte(usdcAmount);
   });
 
   it("swapForWETH: Should swap 100 DAI for WETH", async () => {
@@ -48,7 +48,7 @@ describe("UniswapExchange", () => {
     await dai.connect(user).approve(exchange.address, daiAmount);
     await exchange.connect(user).swapForWETH(daiAmount, dai.address);
 
-    expect(await weth.balanceOf(user.address)).to.gt(balanceBefore);
+    expect(await weth.balanceOf(user.address)).to.be.gt(balanceBefore);
   });
 
   it("swapForWETH: Should swap 100 USDC for WETH", async () => {
