@@ -1,6 +1,6 @@
 const { expect } = require("chai");
 const { ethers, network, waffle } = require("hardhat");
-const { WHALE, contractFixture } = require("./utils");
+const { WHALE, chamberFactoryFixture, tokenFixture } = require("./utils");
 
 describe("Chamber", () => {
   let accounts, dev, whale;
@@ -14,7 +14,8 @@ describe("Chamber", () => {
 
   beforeEach(async () => {
     [dev, user, ...accounts] = await ethers.getSigners();
-    const { contracts, tokens } = await contractFixture();
+    const contracts = await chamberFactoryFixture();
+    const tokens = await tokenFixture();
 
     chamber = contracts.chamber;
     chamberFactory = contracts.chamberFactory;

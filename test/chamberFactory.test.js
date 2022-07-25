@@ -1,6 +1,6 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
-const { contractFixture } = require("./utils");
+const { chamberFactoryFixture } = require("./utils");
 
 describe("ChamberFactory", () => {
   let accounts, dev;
@@ -8,12 +8,10 @@ describe("ChamberFactory", () => {
 
   beforeEach(async () => {
     [dev, user, ...accounts] = await ethers.getSigners();
-    const { contracts } = await contractFixture();
+    const contracts = await chamberFactoryFixture();
 
     chamber = contracts.chamber;
     chamberFactory = contracts.chamberFactory;
-    compoundManager = contracts.compoundManager;
-    uniswapExchange = contracts.uniswapExchange;
 
     let tx = await chamberFactory.connect(user).deployChamber();
     let receipt = await tx.wait();

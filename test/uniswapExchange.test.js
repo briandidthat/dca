@@ -1,7 +1,7 @@
 const { expect } = require("chai");
 const { ethers, network } = require("hardhat");
 const { expectRevert } = require("@openzeppelin/test-helpers");
-const { WHALE, uniswapExchangeFixture } = require("./utils");
+const { WHALE, uniswapExchangeFixture, tokenFixture } = require("./utils");
 
 describe("UniswapExchange", () => {
   let accounts, dev, whale;
@@ -13,13 +13,12 @@ describe("UniswapExchange", () => {
 
   beforeEach(async () => {
     [dev, user, ...accounts] = await ethers.getSigners();
-    const { uniswapExchange, tokens } = await uniswapExchangeFixture();
+    exchange = await uniswapExchangeFixture();
+    const tokens = await tokenFixture();
 
     dai = tokens.dai;
     weth = tokens.weth;
     usdc = tokens.usdc;
-
-    exchange = uniswapExchange;
 
     // unlock USDC/DAI Whale account
     await network.provider.request({
@@ -34,7 +33,7 @@ describe("UniswapExchange", () => {
     await usdc.connect(whale).transfer(user.address, usdcAmount);
   });
 
-  it("Should deploy contract with dev as owner", async () => {
+  it("owner: Should deploy contract with dev as owner", async () => {
     const owner = await exchange.owner.call();
     expect(owner).to.equal(dev.address);
   });
@@ -49,7 +48,7 @@ describe("UniswapExchange", () => {
     await dai.connect(user).approve(exchange.address, daiAmount);
     await exchange.connect(user).swapForWETH(daiAmount, dai.address);
 
-    expect(await weth.balanceOf(user.address)).to.gte(balanceBefore);
+    expect(await weth.balanceOf(user.address)).to.gt(balanceBefore);
   });
 
   it("swapForWETH: Should swap 100 USDC for WETH", async () => {
@@ -57,7 +56,7 @@ describe("UniswapExchange", () => {
     await usdc.connect(user).approve(exchange.address, usdcAmount);
     await exchange.connect(user).swapForWETH(usdcAmount, usdc.address);
 
-    expect(await weth.balanceOf(user.address)).to.gte(balanceBefore);
+    expect(await weth.balanceOf(user.address)).to.gt(balanceBefore);
   });
 
   it("swapForWETH: Should revert due to depositing incorrect coin", async () => {
