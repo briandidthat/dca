@@ -13,7 +13,7 @@ interface IChamber {
 
     function getFactory() external view returns (address);
 
-    function supplyETH() external payable;
+    function supplyETH(uint256 amount) external;
 
     function redeemETH(uint256 amount) external;
 

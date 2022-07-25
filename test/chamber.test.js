@@ -4,7 +4,7 @@ const { WHALE, contractFixture } = require("./utils");
 
 describe("Chamber", () => {
   let accounts, dev, whale;
-  let chamber, chamberFactory, compoundManager, uniswapExchange;
+  let chamber, chamberFactory;
   let weth, dai, usdc;
   let cEth, cUsdc, cDai;
 
@@ -18,8 +18,6 @@ describe("Chamber", () => {
 
     chamber = contracts.chamber;
     chamberFactory = contracts.chamberFactory;
-    compoundManager = contracts.compoundManager;
-    uniswapExchange = contracts.uniswapExchange;
 
     dai = tokens.dai;
     weth = tokens.weth;
@@ -111,24 +109,36 @@ describe("Chamber", () => {
 
     expect(chamberBalanceBefore).to.be.equal(ethAmount);
     expect(chamberBalanceAfter).to.be.equal(0);
-    expect(userBalanceAfter).to.be.gte(userBalanceBefore);
+    expect(userBalanceAfter).to.be.gt(userBalanceBefore);
   });
 
-  // ========================= SUPPLY =============================
+  // ========================= BUY ETH =============================
+
   it("buyETH: Should buy ETH using DAI", async () => {
     await chamber.connect(user).deposit(dai.address, daiAmount);
+    await chamber.connect(user).buyETH(dai.address, daiAmount);
+
     let chamberBalance = await waffle.provider.getBalance(chamber.address);
 
-    expect(chamberBalance).to.be.gte(0);
+    expect(chamberBalance).to.be.gt(0);
   });
 
   it("buyETH: Should buy ETH using USDC", async () => {
     await chamber.connect(user).deposit(usdc.address, usdcAmount);
+    await chamber.connect(user).buyETH(usdc.address, usdcAmount);
+
     let chamberBalance = await waffle.provider.getBalance(chamber.address);
 
-    expect(chamberBalance).to.be.gte(0);
+    expect(chamberBalance).to.be.gt(0);
   });
 
+  // ========================= SUPPLY ETH =============================
+  it("supplyETH: Should supply ETH on compound", async () => {
+    await user.sendTransaction({ to: chamber.address, value: ethAmount });
+    await chamber.connect(user).supplyETH(ethAmount);
 
-  // ========================= EVENT =============================
+    let cEthBalance = await cEth.balanceOf(chamber.address);
+
+    expect(cEthBalance).to.be.gt(0);
+  });
 });

@@ -75,15 +75,18 @@ contract Chamber is IChamber, Initializable {
         emit Withdraw(_asset, _amount);
     }
 
-    function supplyETH() external payable override {
+    function supplyETH(uint256 _amount) external override {
+        require(address(this).balance >= _amount, "Please deposit ether");
         require(
-            compoundManager.supplyETH{value: msg.value, gas: 250000}(msg.sender)
+            compoundManager.supplyETH{value: _amount, gas: 250000}(
+                address(this)
+            )
         );
 
-        balances[TokenLibrary.cETH] += msg.value;
-        balances[WETH] -= msg.value;
+        balances[TokenLibrary.cETH] += _amount;
+        balances[WETH] -= _amount;
 
-        emit Supply(address(0), msg.value);
+        emit Supply(address(0), _amount);
     }
 
     function redeemETH(uint256 _amount) external override onlyOwner {
@@ -112,7 +115,7 @@ contract Chamber is IChamber, Initializable {
         }
 
         uint amountOut = uniswapExchange.swapForWETH(_amount, _asset);
-        balances[address(0)] += amountOut;
+        balances[_asset] -= _amount;
 
         IWETH(WETH).withdraw(amountOut);
 
