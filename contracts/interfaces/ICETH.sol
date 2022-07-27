@@ -18,4 +18,5 @@ interface ICETH {
 
     function transferFrom(address src, address dst, uint amount) external returns (bool);
 
+    function approve(address spender, uint amount) external returns (bool);
 }

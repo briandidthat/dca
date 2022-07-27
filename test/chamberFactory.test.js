@@ -4,7 +4,7 @@ const { chamberFactoryFixture } = require("./utils");
 
 describe("ChamberFactory", () => {
   let accounts, dev;
-  let chamber, chamberFactory, compoundManager, uniswapExchange;
+  let chamber, chamberFactory;
 
   beforeEach(async () => {
     [dev, user, ...accounts] = await ethers.getSigners();
