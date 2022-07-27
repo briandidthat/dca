@@ -3,6 +3,11 @@ pragma solidity =0.7.6;
 pragma abicoder v2;
 
 interface IChamber {
+    enum Strategy {
+        TAKE,
+        COMPOUND
+    }
+
     event Supply(address indexed asset, uint256 amount);
     event Deposit(address indexed asset, uint256 amount);
     event Withdraw(address indexed asset, uint256 amount);
@@ -27,9 +32,5 @@ interface IChamber {
 
     function balanceOf(address asset) external view returns (uint);
 
-    function initialize(
-        address owner,
-        address compoundManager,
-        address _uniswapExchange
-    ) external;
+    function initialize(address owner, address _uniswapExchange) external;
 }

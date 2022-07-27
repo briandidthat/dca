@@ -25,9 +25,8 @@ contract ChamberFactory is Ownable {
         uint256 timestamp;
     }
 
-    constructor(address _compoundManager, address _uniswapExchange) {
+    constructor(address _uniswapExchange) {
         implementation = address(new Chamber());
-        compoundManager = _compoundManager;
         uniswapExchange = _uniswapExchange;
     }
 
@@ -37,11 +36,7 @@ contract ChamberFactory is Ownable {
             "User already has a chamber"
         );
         address clone = Clones.clone(implementation);
-        IChamber(clone).initialize(
-            msg.sender,
-            compoundManager,
-            uniswapExchange
-        );
+        IChamber(clone).initialize(msg.sender, uniswapExchange);
 
         emit NewChamber(clone, msg.sender);
 

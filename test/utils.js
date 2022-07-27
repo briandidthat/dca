@@ -1,4 +1,4 @@
-const { ethers, network } = require("hardhat");
+const { ethers } = require("hardhat");
 
 const WHALE = "0x7a8edc710ddeadddb0b539de83f3a306a621e823";
 const USDT_WHALE = "0xa929022c9107643515f5c777ce9a910f0d1e490c";
@@ -57,31 +57,13 @@ const uniswapExchangeFixture = async () => {
   return uniswapExchange;
 };
 
-const compoundManagerFixture = async () => {
-  const library = await tokenLibraryFixture();
-  const CompoundManager = await ethers.getContractFactory("CompoundManager", {
-    libraries: {
-      TokenLibrary: library.address,
-    },
-  });
-
-  const compoundManager = await CompoundManager.deploy();
-  await compoundManager.deployed();
-
-  return compoundManager;
-};
-
 const chamberFactoryFixture = async () => {
-  const compoundManager = await compoundManagerFixture();
   const uniswapExchange = await uniswapExchangeFixture();
 
   const Chamber = await ethers.getContractFactory("Chamber");
   const ChamberFactory = await ethers.getContractFactory("ChamberFactory");
 
-  const chamberFactory = await ChamberFactory.deploy(
-    compoundManager.address,
-    uniswapExchange.address
-  );
+  const chamberFactory = await ChamberFactory.deploy(uniswapExchange.address);
 
   await chamberFactory.deployed();
 
@@ -97,7 +79,6 @@ const chamberFactoryFixture = async () => {
 module.exports = {
   tokenFixture,
   uniswapExchangeFixture,
-  compoundManagerFixture,
   chamberFactoryFixture,
   TOKEN_DETAILS,
   WHALE,
