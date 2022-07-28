@@ -11,9 +11,9 @@ import "./interfaces/Initializable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract Chamber is IChamber, Initializable {
-    Strategy public strategy;
     address private owner;
     address public factory;
+    Strategy public strategy;
     IUniswapExchange internal uniswapExchange;
     mapping(address => uint256) balances;
 
@@ -32,6 +32,10 @@ contract Chamber is IChamber, Initializable {
 
     constructor() {
         factory = msg.sender;
+    }
+
+    receive() external payable {
+        emit Deposit(address(0), msg.value);
     }
 
     function initialize(address _owner, address _uniswapExchange)
@@ -69,10 +73,9 @@ contract Chamber is IChamber, Initializable {
         );
 
         require(IERC20(_asset).transfer(owner, _amount));
+        emit Withdraw(_asset, _amount);
 
         balances[_asset] -= _amount;
-
-        emit Withdraw(_asset, _amount);
     }
 
     function supplyETH(uint256 _amount) external override {
@@ -112,8 +115,8 @@ contract Chamber is IChamber, Initializable {
         }
 
         uint amountOut = uniswapExchange.swapForWETH(_amount, _asset);
-
         emit ExecuteSwap(WETH, amountOut);
+
         balances[_asset] -= _amount;
 
         IWETH(WETH).withdraw(amountOut);
@@ -123,6 +126,22 @@ contract Chamber is IChamber, Initializable {
         }
 
         return amountOut;
+    }
+
+    function withdrawETH(uint256 _amount)
+        external
+        override
+        onlyOwner
+        returns (bool)
+    {
+        require(address(this).balance >= _amount, "Insufficient balance");
+
+        (bool success, ) = owner.call{value: _amount}("");
+        require(success, "Failed to transfer ETH");
+
+        emit Withdraw(address(0), _amount);
+
+        return true;
     }
 
     function getOwner() external view override returns (address) {
@@ -137,32 +156,11 @@ contract Chamber is IChamber, Initializable {
         return balances[_asset];
     }
 
-    function setStrategy() external {}
-
-    function withdrawETH(uint256 _amount)
-        external
-        override
-        onlyOwner
-        returns (bool)
-    {
-        require(address(this).balance >= _amount, "Insufficient balance");
-
-        (bool success, ) = owner.call{value: _amount}("");
-
-        emit Withdraw(address(0), _amount);
-
-        return success;
-    }
-
     function _supplyETH(uint _amount) internal {
         ICETH cToken = ICETH(cETH);
 
-        cToken.mint{value: _amount, gas: 250000}();
+        cToken.mint{value: _amount}();
 
         emit Supply(address(0), _amount);
-    }
-
-    receive() external payable {
-        emit Deposit(address(0), msg.value);
     }
 }

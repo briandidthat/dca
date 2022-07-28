@@ -158,4 +158,22 @@ describe("Chamber", () => {
 
     expect(balanceAfter).to.be.gt(balanceBefore);
   });
+
+  // ========================= REDEEM ETH =============================
+  it("balanceOf: Should return a balance of 50 DAI and 50 USDC", async () => {
+    await chamber.connect(user).deposit(dai.address, daiAmount);
+    await chamber.connect(user).deposit(usdc.address, usdcAmount);
+
+    const daiWithdrawal = 50n * 10n ** 18n;
+    const usdcWithdrawal = 50n * 10n ** 6n;
+
+    await chamber.connect(user).withdraw(dai.address, daiWithdrawal);
+    await chamber.connect(user).withdraw(usdc.address, usdcWithdrawal);
+
+    let daiBalance = await chamber.balanceOf(dai.address);
+    let usdcBalance = await chamber.balanceOf(usdc.address);
+
+    expect(daiBalance).to.be.equal(daiWithdrawal);
+    expect(usdcBalance).to.be.equal(usdcWithdrawal);
+  });
 });
