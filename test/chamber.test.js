@@ -1,19 +1,25 @@
 const { expect } = require("chai");
 const { ethers, network, waffle } = require("hardhat");
-const { WHALE, chamberFactoryFixture, tokenFixture } = require("./utils");
+const {
+  USDT_WHALE,
+  WHALE,
+  chamberFactoryFixture,
+  tokenFixture,
+} = require("./utils");
 
 describe("Chamber", () => {
-  let accounts, dev, whale;
+  let accounts, whale, usdtWhale;
   let chamber, chamberFactory;
   let weth, dai, usdc;
   let cEth, cUsdc, cDai;
 
   const daiAmount = 100n * 10n ** 18n;
   const usdcAmount = 100n * 10n ** 6n;
+  const usdtAmount = 100n * 10n ** 6n;
   const ethAmount = 5n * 10n ** 18n;
 
   beforeEach(async () => {
-    [dev, user, ...accounts] = await ethers.getSigners();
+    [user, ...accounts] = await ethers.getSigners();
     const contracts = await chamberFactoryFixture();
     const tokens = await tokenFixture();
 
@@ -23,6 +29,7 @@ describe("Chamber", () => {
     dai = tokens.dai;
     weth = tokens.weth;
     usdc = tokens.usdc;
+    usdt = tokens.usdt;
     cEth = tokens.cEth;
     cDai = tokens.cDai;
     cUsdc = tokens.cUsdc;
@@ -42,14 +49,24 @@ describe("Chamber", () => {
       params: [WHALE],
     });
 
+    // unlock USDT Whale account
+    await network.provider.request({
+      method: "hardhat_impersonateAccount",
+      params: [USDT_WHALE],
+    });
+
     whale = await ethers.getSigner(WHALE);
+    usdtWhale = await ethers.getSigner(USDT_WHALE);
 
     // transfer 100 USDC & 100 DAI from whale to dev
     await dai.connect(whale).transfer(user.address, daiAmount);
     await usdc.connect(whale).transfer(user.address, usdcAmount);
+    await usdt.connect(usdtWhale).transfer(user.address, usdtAmount);
+
     // give approval to the chamber
     await dai.connect(user).approve(chamber.address, daiAmount);
     await usdc.connect(user).approve(chamber.address, usdcAmount);
+    await usdt.connect(user).approve(chamber.address, usdtAmount);
   });
 
   // ========================= DEPOSIT =============================
@@ -67,6 +84,13 @@ describe("Chamber", () => {
 
     expect(balance).to.be.equal(usdcAmount);
   });
+
+  // it("deposit: Should deposit USDT into chamber and update balance", async () => {
+  //   await chamber.connect(user).deposit(usdt.address, usdtAmount);
+  //   let balance = await chamber.balanceOf(usdc.address);
+
+  //   expect(balance).to.be.equal(usdcAmount);
+  // });
 
   it("depositETH: Should deposit ETH into chamber and update balance", async () => {
     await user.sendTransaction({ to: chamber.address, value: ethAmount });
@@ -134,6 +158,7 @@ describe("Chamber", () => {
   });
 
   // ========================= SUPPLY ETH =============================
+
   it("supplyETH: Should supply ETH on compound", async () => {
     await user.sendTransaction({ to: chamber.address, value: ethAmount });
     await chamber.connect(user).supplyETH(ethAmount);
@@ -159,7 +184,8 @@ describe("Chamber", () => {
     expect(balanceAfter).to.be.gt(balanceBefore);
   });
 
-  // ========================= REDEEM ETH =============================
+  // ========================= BALANCE OF =============================
+
   it("balanceOf: Should return a balance of 50 DAI and 50 USDC", async () => {
     await chamber.connect(user).deposit(dai.address, daiAmount);
     await chamber.connect(user).deposit(usdc.address, usdcAmount);
@@ -175,5 +201,18 @@ describe("Chamber", () => {
 
     expect(daiBalance).to.be.equal(daiWithdrawal);
     expect(usdcBalance).to.be.equal(usdcWithdrawal);
+  });
+
+  // ========================= GET OWNER =============================
+  it("getOwner: Should return the chamber owner address", async () => {
+    const owner = await chamber.getOwner();
+    expect(owner).to.be.equal(user.address);
+  });
+
+  // ========================= GET FACTORY =============================
+
+  it("getFactory: Should return the ChamberFactory address", async () => {
+    const factory = await chamber.getFactory();
+    expect(factory).to.be.equal(chamberFactory.address);
   });
 });

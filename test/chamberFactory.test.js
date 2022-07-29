@@ -19,7 +19,7 @@ describe("ChamberFactory", () => {
     // get the chamber we just deployed using the address from logs
     chamber = await ethers.getContractAt(
       "IChamber",
-      receipt.events[0].args.instance
+      receipt.events[0].args.instance,
     );
   });
 

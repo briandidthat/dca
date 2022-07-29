@@ -36,7 +36,7 @@ contract ChamberFactory is Ownable {
             "User already has a chamber"
         );
         address clone = Clones.clone(implementation);
-        IChamber(clone).initialize(msg.sender, uniswapExchange);
+        IChamber(clone).initialize(address(this), msg.sender, uniswapExchange);
 
         emit NewChamber(clone, msg.sender);
 

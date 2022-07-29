@@ -17,7 +17,7 @@ contract UniswapExchange is IUniswapExchange {
     address public constant WETH9 = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     address public constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     address public constant USDT = 0xdAC17F958D2ee523a2206206994597C13D831ec7;
-    uint24 public constant POOL_FEE = 3000;
+    uint24 public constant POOL_FEE = 500;
 
     constructor() {
         owner = msg.sender;
