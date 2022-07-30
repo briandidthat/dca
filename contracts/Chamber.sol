@@ -11,14 +11,15 @@ import "./interfaces/Initializable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract Chamber is IChamber, Initializable {
-    Strategy public strategy;
     address private owner;
     address public factory;
-    IUniswapExchange internal uniswapExchange;
+    Strategy public strategy;
     mapping(address => uint256) balances;
+    IUniswapExchange internal uniswapExchange;
+    ICETH public constant cETH =
+        ICETH(0x4Ddc2D193948926D02f9B1fE9e1daa0718270ED5);
 
     address public constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
-    address public constant cETH = 0x4Ddc2D193948926D02f9B1fE9e1daa0718270ED5;
 
     modifier onlyOwner() {
         require(msg.sender == owner, "Restricted to Owner");
@@ -34,12 +35,17 @@ contract Chamber is IChamber, Initializable {
         factory = msg.sender;
     }
 
-    function initialize(address _owner, address _uniswapExchange)
-        external
-        override
-        initializer
-    {
+    receive() external payable {
+        emit Deposit(address(0), msg.value);
+    }
+
+    function initialize(
+        address _factory,
+        address _owner,
+        address _uniswapExchange
+    ) external override initializer {
         owner = _owner;
+        factory = _factory;
         uniswapExchange = IUniswapExchange(_uniswapExchange);
     }
 
@@ -69,28 +75,27 @@ contract Chamber is IChamber, Initializable {
         );
 
         require(IERC20(_asset).transfer(owner, _amount));
+        emit Withdraw(_asset, _amount);
 
         balances[_asset] -= _amount;
-
-        emit Withdraw(_asset, _amount);
     }
 
     function supplyETH(uint256 _amount) external override {
         require(address(this).balance >= _amount, "Please deposit ether");
+        cETH.mint{value: _amount}();
 
-        _supplyETH(_amount);
+        emit Supply(address(0), _amount);
     }
 
     function redeemETH(uint256 _amount) external override onlyOwner {
-        ICETH cToken = ICETH(cETH);
         require(
-            cToken.balanceOf(address(this)) >= _amount,
+            cETH.balanceOf(address(this)) >= _amount,
             "Insufficient balance"
         );
 
-        require(cToken.redeem(_amount) == 0, "Failed to Redeem");
+        require(cETH.redeem(_amount) == 0, "Failed to Redeem");
 
-        emit Redeem(address(cToken), _amount);
+        emit Redeem(address(cETH), _amount);
     }
 
     function buyETH(address _asset, uint _amount)
@@ -112,17 +117,34 @@ contract Chamber is IChamber, Initializable {
         }
 
         uint amountOut = uniswapExchange.swapForWETH(_amount, _asset);
-
         emit ExecuteSwap(WETH, amountOut);
+
         balances[_asset] -= _amount;
 
         IWETH(WETH).withdraw(amountOut);
 
         if (strategy == Strategy.COMPOUND) {
-            _supplyETH(amountOut);
+            cETH.mint{value: _amount}();
+            emit Supply(address(0), _amount);
         }
 
         return amountOut;
+    }
+
+    function withdrawETH(uint256 _amount)
+        external
+        override
+        onlyOwner
+        returns (bool)
+    {
+        require(address(this).balance >= _amount, "Insufficient balance");
+
+        (bool success, ) = owner.call{value: _amount}("");
+        require(success, "Failed to transfer ETH");
+
+        emit Withdraw(address(0), _amount);
+
+        return true;
     }
 
     function getOwner() external view override returns (address) {
@@ -135,34 +157,5 @@ contract Chamber is IChamber, Initializable {
 
     function balanceOf(address _asset) external view override returns (uint) {
         return balances[_asset];
-    }
-
-    function setStrategy() external {}
-
-    function withdrawETH(uint256 _amount)
-        external
-        override
-        onlyOwner
-        returns (bool)
-    {
-        require(address(this).balance >= _amount, "Insufficient balance");
-
-        (bool success, ) = owner.call{value: _amount}("");
-
-        emit Withdraw(address(0), _amount);
-
-        return success;
-    }
-
-    function _supplyETH(uint _amount) internal {
-        ICETH cToken = ICETH(cETH);
-
-        cToken.mint{value: _amount, gas: 250000}();
-
-        emit Supply(address(0), _amount);
-    }
-
-    receive() external payable {
-        emit Deposit(address(0), msg.value);
     }
 }

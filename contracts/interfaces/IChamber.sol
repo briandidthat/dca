@@ -32,5 +32,9 @@ interface IChamber {
 
     function balanceOf(address asset) external view returns (uint);
 
-    function initialize(address owner, address _uniswapExchange) external;
+    function initialize(
+        address factory,
+        address owner,
+        address _uniswapExchange
+    ) external;
 }

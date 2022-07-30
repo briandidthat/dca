@@ -1,19 +1,24 @@
 const { expect } = require("chai");
 const { ethers, network, waffle } = require("hardhat");
-const { WHALE, chamberFactoryFixture, tokenFixture } = require("./utils");
+const {
+  USDT_WHALE,
+  WHALE,
+  chamberFactoryFixture,
+  tokenFixture,
+} = require("./utils");
 
 describe("Chamber", () => {
-  let accounts, dev, whale;
+  let accounts, whale;
   let chamber, chamberFactory;
   let weth, dai, usdc;
   let cEth, cUsdc, cDai;
 
-  const daiAmount = 100n * 10n ** 18n;
-  const usdcAmount = 100n * 10n ** 6n;
-  const ethAmount = 5n * 10n ** 18n;
+  const daiAmount = 100n * 10n ** 18n; // 100 DAI
+  const usdcAmount = 100n * 10n ** 6n; // 100 USDC
+  const ethAmount = 5n * 10n ** 18n; // 5 ETH
 
   beforeEach(async () => {
-    [dev, user, ...accounts] = await ethers.getSigners();
+    [user, ...accounts] = await ethers.getSigners();
     const contracts = await chamberFactoryFixture();
     const tokens = await tokenFixture();
 
@@ -23,6 +28,7 @@ describe("Chamber", () => {
     dai = tokens.dai;
     weth = tokens.weth;
     usdc = tokens.usdc;
+    usdt = tokens.usdt;
     cEth = tokens.cEth;
     cDai = tokens.cDai;
     cUsdc = tokens.cUsdc;
@@ -47,6 +53,7 @@ describe("Chamber", () => {
     // transfer 100 USDC & 100 DAI from whale to dev
     await dai.connect(whale).transfer(user.address, daiAmount);
     await usdc.connect(whale).transfer(user.address, usdcAmount);
+
     // give approval to the chamber
     await dai.connect(user).approve(chamber.address, daiAmount);
     await usdc.connect(user).approve(chamber.address, usdcAmount);
@@ -134,6 +141,7 @@ describe("Chamber", () => {
   });
 
   // ========================= SUPPLY ETH =============================
+
   it("supplyETH: Should supply ETH on compound", async () => {
     await user.sendTransaction({ to: chamber.address, value: ethAmount });
     await chamber.connect(user).supplyETH(ethAmount);
@@ -157,5 +165,37 @@ describe("Chamber", () => {
     let balanceAfter = await waffle.provider.getBalance(chamber.address);
 
     expect(balanceAfter).to.be.gt(balanceBefore);
+  });
+
+  // ========================= BALANCE OF =============================
+
+  it("balanceOf: Should return a balance of 50 DAI and 50 USDC", async () => {
+    await chamber.connect(user).deposit(dai.address, daiAmount);
+    await chamber.connect(user).deposit(usdc.address, usdcAmount);
+
+    const daiWithdrawal = 50n * 10n ** 18n;
+    const usdcWithdrawal = 50n * 10n ** 6n;
+
+    await chamber.connect(user).withdraw(dai.address, daiWithdrawal);
+    await chamber.connect(user).withdraw(usdc.address, usdcWithdrawal);
+
+    let daiBalance = await chamber.balanceOf(dai.address);
+    let usdcBalance = await chamber.balanceOf(usdc.address);
+
+    expect(daiBalance).to.be.equal(daiWithdrawal);
+    expect(usdcBalance).to.be.equal(usdcWithdrawal);
+  });
+
+  // ========================= GET OWNER =============================
+  it("getOwner: Should return the chamber owner address", async () => {
+    const owner = await chamber.getOwner();
+    expect(owner).to.be.equal(user.address);
+  });
+
+  // ========================= GET FACTORY =============================
+
+  it("getFactory: Should return the ChamberFactory address", async () => {
+    const factory = await chamber.getFactory();
+    expect(factory).to.be.equal(chamberFactory.address);
   });
 });

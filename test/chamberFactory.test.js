@@ -35,17 +35,23 @@ describe("ChamberFactory", () => {
     );
   });
 
-  it("deployChamber: Revert - Should revert due to user having a chamber already", async () => {
-    await expect(
-      chamberFactory.connect(user).deployChamber()
-    ).to.be.revertedWith("User already has a chamber");
+  it("deployChamber: Should return the users existing chamber", async () => {
+    const existingChamber = await chamberFactory.connect(user).deployChamber();
+    let tx = await existingChamber.wait();
+    let address = await tx.events[0].args.instance;
+    expect(address).to.be.equal(chamber.address);
   });
 
   it("getChamber: Should return the correct chamber by user", async () => {
     const details = await chamberFactory.getChamber(user.address);
     expect(details.owner).to.equal(user.address);
     expect(details.instance).to.equal(chamber.address);
-    expect(details.initialized).to.equal(true);
+  });
+
+  it("getChamber: Should revert due to no existing chamber for owner", async () => {
+    await expect(chamberFactory.getChamber(dev.address)).to.be.revertedWith(
+      "No chamber for that address"
+    );
   });
 
   it("getInstanceCount: Should return 1 as count since we deployed 1 chamber", async () => {
