@@ -15,13 +15,14 @@ contract ChamberFactory is Ownable {
     address public uniswapExchange;
     uint256 private instances;
     mapping(address => ChamberDetails) private chambers;
+    mapping(address => bool) hasChamber;
 
+    event ChamberLogger(address indexed instance, bytes32 data);
     event NewChamber(address indexed instance, address indexed owner);
 
     struct ChamberDetails {
         address instance;
         address owner;
-        bool initialized;
         uint256 timestamp;
     }
 
@@ -31,10 +32,12 @@ contract ChamberFactory is Ownable {
     }
 
     function deployChamber() external returns (address instance) {
-        require(
-            chambers[msg.sender].initialized != true,
-            "User already has a chamber"
-        );
+        if (hasChamber[msg.sender]) {
+            address chmbrAddr = chambers[msg.sender].instance;
+            emit ChamberLogger(chmbrAddr, "Has existing chamber");
+            return chmbrAddr;
+        }
+
         address clone = Clones.clone(implementation);
         IChamber(clone).initialize(address(this), msg.sender, uniswapExchange);
 
@@ -43,12 +46,14 @@ contract ChamberFactory is Ownable {
         ChamberDetails memory chamber = ChamberDetails({
             instance: clone,
             owner: msg.sender,
-            initialized: true,
             timestamp: block.timestamp
         });
 
-        chambers[msg.sender] = chamber;
         instances++;
+        hasChamber[msg.sender] = true;
+        chambers[msg.sender] = chamber;
+
+        emit ChamberLogger(address(this), "State has been updated");
         instance = clone;
     }
 
@@ -57,6 +62,7 @@ contract ChamberFactory is Ownable {
         view
         returns (ChamberDetails memory chamber)
     {
+        require(hasChamber[_beneficiary], "No chamber for that address");
         return chambers[_beneficiary];
     }
 

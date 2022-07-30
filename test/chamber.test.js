@@ -8,15 +8,14 @@ const {
 } = require("./utils");
 
 describe("Chamber", () => {
-  let accounts, whale, usdtWhale;
+  let accounts, whale;
   let chamber, chamberFactory;
   let weth, dai, usdc;
   let cEth, cUsdc, cDai;
 
-  const daiAmount = 100n * 10n ** 18n;
-  const usdcAmount = 100n * 10n ** 6n;
-  const usdtAmount = 100n * 10n ** 6n;
-  const ethAmount = 5n * 10n ** 18n;
+  const daiAmount = 100n * 10n ** 18n; // 100 DAI
+  const usdcAmount = 100n * 10n ** 6n; // 100 USDC
+  const ethAmount = 5n * 10n ** 18n; // 5 ETH
 
   beforeEach(async () => {
     [user, ...accounts] = await ethers.getSigners();
@@ -49,24 +48,15 @@ describe("Chamber", () => {
       params: [WHALE],
     });
 
-    // unlock USDT Whale account
-    await network.provider.request({
-      method: "hardhat_impersonateAccount",
-      params: [USDT_WHALE],
-    });
-
     whale = await ethers.getSigner(WHALE);
-    usdtWhale = await ethers.getSigner(USDT_WHALE);
 
     // transfer 100 USDC & 100 DAI from whale to dev
     await dai.connect(whale).transfer(user.address, daiAmount);
     await usdc.connect(whale).transfer(user.address, usdcAmount);
-    await usdt.connect(usdtWhale).transfer(user.address, usdtAmount);
 
     // give approval to the chamber
     await dai.connect(user).approve(chamber.address, daiAmount);
     await usdc.connect(user).approve(chamber.address, usdcAmount);
-    await usdt.connect(user).approve(chamber.address, usdtAmount);
   });
 
   // ========================= DEPOSIT =============================
@@ -84,13 +74,6 @@ describe("Chamber", () => {
 
     expect(balance).to.be.equal(usdcAmount);
   });
-
-  // it("deposit: Should deposit USDT into chamber and update balance", async () => {
-  //   await chamber.connect(user).deposit(usdt.address, usdtAmount);
-  //   let balance = await chamber.balanceOf(usdc.address);
-
-  //   expect(balance).to.be.equal(usdcAmount);
-  // });
 
   it("depositETH: Should deposit ETH into chamber and update balance", async () => {
     await user.sendTransaction({ to: chamber.address, value: ethAmount });
