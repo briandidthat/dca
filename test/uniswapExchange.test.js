@@ -48,6 +48,7 @@ describe("UniswapExchange", () => {
     await usdc.connect(whale).transfer(user.address, usdcAmount);
     await usdt.connect(usdtWhale).transfer(user.address, usdtAmount);
   });
+  // ========================= GET OWNER =============================
 
   it("owner: Should deploy contract with dev as owner", async () => {
     const owner = await exchange.owner.call();
@@ -58,6 +59,8 @@ describe("UniswapExchange", () => {
     expect(await dai.balanceOf(user.address)).to.be.gte(daiAmount);
     expect(await usdc.balanceOf(user.address)).to.be.gte(usdcAmount);
   });
+
+  // ========================= SWAP FOR WETH =============================
 
   it("swapForWETH: Should swap 100 DAI for WETH", async () => {
     const balanceBefore = await weth.balanceOf(user.address);
