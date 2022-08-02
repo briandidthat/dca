@@ -131,6 +131,26 @@ contract Chamber is IChamber, Initializable {
         return amountOut;
     }
 
+    function fillQuote(
+        IERC20 _sellToken,
+        IERC20 _buyToken,
+        uint256 _amount,
+        address _spender,
+        address payable _swapTarget,
+        bytes calldata _swapCallData
+    ) external payable override {
+        // Give `spender` an infinite allowance to spend this contract's `sellToken`
+        if (_sellToken.allowance(address(this), _spender) < _amount) {
+            require(_sellToken.approve(_spender, uint256(-1)));
+        }
+        // Execute swap
+        (bool success, bytes memory data) = _swapTarget.call(_swapCallData);
+
+        require(success, getRevertMsg(data));
+
+        emit ExecuteSwap(address(_buyToken), _amount);
+    }
+
     function withdrawETH(uint256 _amount)
         external
         override
@@ -157,5 +177,19 @@ contract Chamber is IChamber, Initializable {
 
     function balanceOf(address _asset) external view override returns (uint) {
         return balances[_asset];
+    }
+
+    function getRevertMsg(bytes memory _returnData)
+        internal
+        pure
+        returns (string memory)
+    {
+        if (_returnData.length < 68) return "Transaction reverted silently";
+
+        assembly {
+            _returnData := add(_returnData, 0x04)
+        }
+
+        return abi.decode(_returnData, (string));
     }
 }

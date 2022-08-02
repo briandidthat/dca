@@ -22,11 +22,14 @@ describe("ChamberFactory", () => {
       receipt.events[0].args.instance
     );
   });
+  // ========================= DEPLOY =============================
 
   it("deploy: Owner - Should deploy chamber with user as owner", async () => {
     const owner = await chamber.getOwner();
     expect(owner).to.equal(user.address);
   });
+
+  // ========================= DEPLOY CHAMBER =============================
 
   it("deployChamber: Event - Should emit a NewChamber event on deployment", async () => {
     await expect(chamberFactory.connect(dev).deployChamber()).to.emit(
@@ -42,6 +45,8 @@ describe("ChamberFactory", () => {
     expect(address).to.be.equal(chamber.address);
   });
 
+  // ========================= GET CHAMBER =============================
+
   it("getChamber: Should return the correct chamber by user", async () => {
     const details = await chamberFactory.getChamber(user.address);
     expect(details.owner).to.equal(user.address);
@@ -53,6 +58,8 @@ describe("ChamberFactory", () => {
       "No chamber for that address"
     );
   });
+
+  // ========================= GET INSTANCE COUNT =============================
 
   it("getInstanceCount: Should return 1 as count since we deployed 1 chamber", async () => {
     const instances = await chamberFactory.getInstanceCount();

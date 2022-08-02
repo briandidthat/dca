@@ -15,7 +15,7 @@ contract ChamberFactory is Ownable {
     address public uniswapExchange;
     uint256 private instances;
     mapping(address => ChamberDetails) private chambers;
-    mapping(address => bool) hasChamber;
+    mapping(address => bool) private hasChamber;
 
     event ChamberLogger(address indexed instance, bytes32 data);
     event NewChamber(address indexed instance, address indexed owner);

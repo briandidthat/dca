@@ -1,11 +1,7 @@
+const axios = require("axios");
 const { expect } = require("chai");
 const { ethers, network, waffle } = require("hardhat");
-const {
-  USDT_WHALE,
-  WHALE,
-  chamberFactoryFixture,
-  tokenFixture,
-} = require("./utils");
+const { WHALE, chamberFactoryFixture, tokenFixture } = require("./utils");
 
 describe("Chamber", () => {
   let accounts, whale;
@@ -28,7 +24,6 @@ describe("Chamber", () => {
     dai = tokens.dai;
     weth = tokens.weth;
     usdc = tokens.usdc;
-    usdt = tokens.usdt;
     cEth = tokens.cEth;
     cDai = tokens.cDai;
     cUsdc = tokens.cUsdc;
@@ -197,5 +192,32 @@ describe("Chamber", () => {
   it("getFactory: Should return the ChamberFactory address", async () => {
     const factory = await chamber.getFactory();
     expect(factory).to.be.equal(chamberFactory.address);
+  });
+
+  // ========================= FILL QUOTE =============================
+  it("fillQuote: Should swap USDC to WETH using 0x liquidity", async () => {
+    await chamber.connect(user).deposit(usdc.address, usdcAmount);
+    const response = await axios.get(
+      "https://api.0x.org/swap/v1/quote?sellToken=USDC&buyToken=WETH&sellAmount=100000000"
+    );
+
+    const quote = response.data;
+
+    await usdc.connect(user).approve(quote.allowanceTarget, quote.sellAmount);
+
+    await chamber
+      .connect(user)
+      .fillQuote(
+        quote.sellTokenAddress,
+        quote.buyTokenAddress,
+        usdcAmount,
+        quote.allowanceTarget,
+        quote.to,
+        quote.data
+      );
+
+    const chamberWethBalance = await weth.balanceOf(chamber.address);
+
+    expect(chamberWethBalance).to.be.gt(0);
   });
 });
