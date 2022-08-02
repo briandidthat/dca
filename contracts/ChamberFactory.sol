@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-pragma solidity =0.7.6;
-pragma abicoder v2;
+pragma solidity ^0.8.0;
 
 import "./Chamber.sol";
 import "./interfaces/IChamber.sol";
@@ -11,8 +10,6 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract ChamberFactory is Ownable {
     address public implementation;
-    address public compoundManager;
-    address public uniswapExchange;
     uint256 private instances;
     mapping(address => ChamberDetails) private chambers;
     mapping(address => bool) private hasChamber;
@@ -26,9 +23,8 @@ contract ChamberFactory is Ownable {
         uint256 timestamp;
     }
 
-    constructor(address _uniswapExchange) {
+    constructor() {
         implementation = address(new Chamber());
-        uniswapExchange = _uniswapExchange;
     }
 
     function deployChamber() external returns (address instance) {
@@ -39,7 +35,7 @@ contract ChamberFactory is Ownable {
         }
 
         address clone = Clones.clone(implementation);
-        IChamber(clone).initialize(address(this), msg.sender, uniswapExchange);
+        IChamber(clone).initialize(address(this), msg.sender);
 
         emit NewChamber(clone, msg.sender);
 

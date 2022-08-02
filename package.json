@@ -11,7 +11,7 @@
     "web3": "^1.7.4"
   },
   "dependencies": {
-    "@uniswap/v3-periphery": "^1.4.1",
+    "@openzeppelin/contracts": "^4.7.2",
     "axios": "^0.27.2",
     "dotenv": "^16.0.1"
   }

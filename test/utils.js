@@ -45,42 +45,21 @@ const tokenFixture = async () => {
   return { dai, weth, usdc, usdt, cDai, cEth, cUsdc };
 };
 
-const uniswapExchangeFixture = async () => {
-  const library = await tokenLibraryFixture();
-  const UniswapExchange = await ethers.getContractFactory("UniswapExchange", {
-    libraries: {
-      TokenLibrary: library.address,
-    },
-  });
-
-  const uniswapExchange = await UniswapExchange.deploy();
-  await uniswapExchange.deployed();
-
-  return uniswapExchange;
-};
-
 const chamberFactoryFixture = async () => {
-  const uniswapExchange = await uniswapExchangeFixture();
-
   const Chamber = await ethers.getContractFactory("Chamber");
   const ChamberFactory = await ethers.getContractFactory("ChamberFactory");
 
-  const chamberFactory = await ChamberFactory.deploy(uniswapExchange.address);
+  const chamberFactory = await ChamberFactory.deploy();
 
   await chamberFactory.deployed();
 
-  const chamber = await Chamber.deploy();
-  await chamber.deployed();
-
   return {
     chamberFactory,
-    chamber,
   };
 };
 
 module.exports = {
   tokenFixture,
-  uniswapExchangeFixture,
   chamberFactoryFixture,
   TOKEN_DETAILS,
   WHALE,

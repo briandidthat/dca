@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-pragma solidity =0.7.6;
-pragma abicoder v2;
+pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -15,6 +14,7 @@ interface IChamber {
     event Withdraw(address indexed asset, uint256 amount);
     event Redeem(address indexed cToken, uint256 amount);
     event ExecuteSwap(address indexed asset, uint256 amount);
+    event SwapLogger(address indexed asset, bytes indexed data);
 
     function getOwner() external view returns (address);
 
@@ -24,8 +24,6 @@ interface IChamber {
 
     function redeemETH(uint256 amount) external;
 
-    function buyETH(address asset, uint256 amount) external returns (uint256);
-
     function deposit(address asset, uint256 amount) external;
 
     function withdraw(address asset, uint256 amount) external;
@@ -34,7 +32,9 @@ interface IChamber {
 
     function balanceOf(address asset) external view returns (uint);
 
-    function fillQuote(
+    function initialize(address factory, address owner) external;
+
+    function executeSwap(
         IERC20 _sellToken,
         IERC20 _buyToken,
         uint256 _amount,
@@ -42,10 +42,4 @@ interface IChamber {
         address payable _swapTarget,
         bytes calldata _swapCallData
     ) external payable;
-
-    function initialize(
-        address factory,
-        address owner,
-        address _uniswapExchange
-    ) external;
 }

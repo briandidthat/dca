@@ -18,7 +18,6 @@ describe("Chamber", () => {
     const contracts = await chamberFactoryFixture();
     const tokens = await tokenFixture();
 
-    chamber = contracts.chamber;
     chamberFactory = contracts.chamberFactory;
 
     dai = tokens.dai;
@@ -34,7 +33,7 @@ describe("Chamber", () => {
     // get the chamber we just deployed using the address from logs
     chamber = await ethers.getContractAt(
       "IChamber",
-      receipt.events[0].args.instance
+      receipt.events[1].args.instance
     );
 
     // unlock USDC/DAI Whale account
@@ -115,26 +114,6 @@ describe("Chamber", () => {
     expect(userBalanceAfter).to.be.gt(userBalanceBefore);
   });
 
-  // ========================= BUY ETH =============================
-
-  it("buyETH: Should buy ETH using DAI", async () => {
-    await chamber.connect(user).deposit(dai.address, daiAmount);
-    await chamber.connect(user).buyETH(dai.address, daiAmount);
-
-    let chamberBalance = await waffle.provider.getBalance(chamber.address);
-
-    expect(chamberBalance).to.be.gt(0);
-  });
-
-  it("buyETH: Should buy ETH using USDC", async () => {
-    await chamber.connect(user).deposit(usdc.address, usdcAmount);
-    await chamber.connect(user).buyETH(usdc.address, usdcAmount);
-
-    let chamberBalance = await waffle.provider.getBalance(chamber.address);
-
-    expect(chamberBalance).to.be.gt(0);
-  });
-
   // ========================= SUPPLY ETH =============================
 
   it("supplyETH: Should supply ETH on compound", async () => {
@@ -195,7 +174,7 @@ describe("Chamber", () => {
   });
 
   // ========================= FILL QUOTE =============================
-  it("fillQuote: Should swap USDC to WETH using 0x liquidity", async () => {
+  it("executeSwap: Should swap USDC to WETH using 0x liquidity", async () => {
     await chamber.connect(user).deposit(usdc.address, usdcAmount);
     const response = await axios.get(
       "https://api.0x.org/swap/v1/quote?sellToken=USDC&buyToken=WETH&sellAmount=100000000"
@@ -207,10 +186,36 @@ describe("Chamber", () => {
 
     await chamber
       .connect(user)
-      .fillQuote(
+      .executeSwap(
         quote.sellTokenAddress,
         quote.buyTokenAddress,
         usdcAmount,
+        quote.allowanceTarget,
+        quote.to,
+        quote.data
+      );
+
+    const chamberWethBalance = await weth.balanceOf(chamber.address);
+
+    expect(chamberWethBalance).to.be.gt(0);
+  });
+
+  it("executeSwap: Should swap DAI to WETH using 0x liquidity", async () => {
+    await chamber.connect(user).deposit(dai.address, daiAmount);
+    const response = await axios.get(
+      "https://api.0x.org/swap/v1/quote?sellToken=DAI&buyToken=WETH&sellAmount=100000000000000000000"
+    );
+
+    const quote = response.data;
+
+    await dai.connect(user).approve(quote.allowanceTarget, quote.sellAmount);
+
+    await chamber
+      .connect(user)
+      .executeSwap(
+        quote.sellTokenAddress,
+        quote.buyTokenAddress,
+        daiAmount,
         quote.allowanceTarget,
         quote.to,
         quote.data
