@@ -2,6 +2,8 @@
 pragma solidity =0.7.6;
 pragma abicoder v2;
 
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 interface IChamber {
     enum Strategy {
         TAKE,
@@ -31,6 +33,15 @@ interface IChamber {
     function withdrawETH(uint256 amount) external returns (bool);
 
     function balanceOf(address asset) external view returns (uint);
+
+    function fillQuote(
+        IERC20 _sellToken,
+        IERC20 _buyToken,
+        uint256 _amount,
+        address _spender,
+        address payable _swapTarget,
+        bytes calldata _swapCallData
+    ) external payable;
 
     function initialize(
         address factory,
