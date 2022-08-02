@@ -67,6 +67,8 @@ describe("Chamber", () => {
     expect(balance).to.be.equal(usdcAmount);
   });
 
+  // ========================= DEPOSIT ETH =============================
+
   it("depositETH: Should deposit ETH into chamber and update balance", async () => {
     await user.sendTransaction({ to: chamber.address, value: ethAmount });
     let balance = await waffle.provider.getBalance(chamber.address);
@@ -85,7 +87,7 @@ describe("Chamber", () => {
     expect(balance).to.be.equal(0);
   });
 
-  it("withdraw: Should withdraw USDC from chamber", async () => {
+  it("withdraw: Should withdraw USDC from chamber and update balance", async () => {
     await chamber.connect(user).deposit(usdc.address, usdcAmount);
     await chamber.connect(user).withdraw(usdc.address, usdcAmount);
 
@@ -93,6 +95,17 @@ describe("Chamber", () => {
 
     expect(balance).to.be.equal(0);
   });
+
+  // ========================= WITHDRAW REVERT =============================
+
+  it("withdraw: Should revert due to caller not being owner", async () => {
+    await chamber.connect(user).deposit(usdc.address, usdcAmount);
+    await expect(
+      chamber.connect(accounts[2]).withdraw(usdc.address, usdcAmount)
+    ).to.be.revertedWith("Restricted to Owner");
+  });
+
+  // ========================= WITHDRAW ETH =============================
 
   it("withdrawETH: Should withdraw ETH from chamber", async () => {
     await user.sendTransaction({ to: chamber.address, value: ethAmount });
@@ -112,6 +125,15 @@ describe("Chamber", () => {
     expect(userBalanceAfter).to.be.gt(userBalanceBefore);
   });
 
+  // ========================= WITHDRAW ETH REVERT =============================
+
+  it("withdrawETH: Should revert due to caller not being owner", async () => {
+    await user.sendTransaction({ to: chamber.address, value: ethAmount });
+
+    await expect(
+      chamber.connect(accounts[2]).withdrawETH(ethAmount)
+    ).to.be.revertedWith("Restricted to Owner");
+  });
   // ========================= SUPPLY ETH =============================
 
   it("supplyETH: Should supply ETH on compound", async () => {
@@ -137,38 +159,6 @@ describe("Chamber", () => {
     let balanceAfter = await waffle.provider.getBalance(chamber.address);
 
     expect(balanceAfter).to.be.gt(balanceBefore);
-  });
-
-  // ========================= BALANCE OF =============================
-
-  it("balanceOf: Should return a balance of 50 DAI and 50 USDC", async () => {
-    await chamber.connect(user).deposit(dai.address, daiAmount);
-    await chamber.connect(user).deposit(usdc.address, usdcAmount);
-
-    const daiWithdrawal = 50n * 10n ** 18n;
-    const usdcWithdrawal = 50n * 10n ** 6n;
-
-    await chamber.connect(user).withdraw(dai.address, daiWithdrawal);
-    await chamber.connect(user).withdraw(usdc.address, usdcWithdrawal);
-
-    let daiBalance = await chamber.balanceOf(dai.address);
-    let usdcBalance = await chamber.balanceOf(usdc.address);
-
-    expect(daiBalance).to.be.equal(daiWithdrawal);
-    expect(usdcBalance).to.be.equal(usdcWithdrawal);
-  });
-
-  // ========================= GET OWNER =============================
-  it("getOwner: Should return the chamber owner address", async () => {
-    const owner = await chamber.getOwner();
-    expect(owner).to.be.equal(user.address);
-  });
-
-  // ========================= GET FACTORY =============================
-
-  it("getFactory: Should return the ChamberFactory address", async () => {
-    const factory = await chamber.getFactory();
-    expect(factory).to.be.equal(chamberFactory.address);
   });
 
   // ========================= EXECUTE SWAP =============================
@@ -227,5 +217,37 @@ describe("Chamber", () => {
 
     expect(chamberWethBalance).to.be.gt(0);
     expect(chamberBalance).to.be.equal(chamberWethBalance);
+  });
+
+  // ========================= BALANCE OF =============================
+
+  it("balanceOf: Should return a balance of 50 DAI and 50 USDC", async () => {
+    await chamber.connect(user).deposit(dai.address, daiAmount);
+    await chamber.connect(user).deposit(usdc.address, usdcAmount);
+
+    const daiWithdrawal = 50n * 10n ** 18n;
+    const usdcWithdrawal = 50n * 10n ** 6n;
+
+    await chamber.connect(user).withdraw(dai.address, daiWithdrawal);
+    await chamber.connect(user).withdraw(usdc.address, usdcWithdrawal);
+
+    let daiBalance = await chamber.balanceOf(dai.address);
+    let usdcBalance = await chamber.balanceOf(usdc.address);
+
+    expect(daiBalance).to.be.equal(daiWithdrawal);
+    expect(usdcBalance).to.be.equal(usdcWithdrawal);
+  });
+
+  // ========================= GET OWNER =============================
+  it("getOwner: Should return the chamber owner address", async () => {
+    const owner = await chamber.getOwner();
+    expect(owner).to.be.equal(user.address);
+  });
+
+  // ========================= GET FACTORY =============================
+
+  it("getFactory: Should return the ChamberFactory address", async () => {
+    const factory = await chamber.getFactory();
+    expect(factory).to.be.equal(chamberFactory.address);
   });
 });

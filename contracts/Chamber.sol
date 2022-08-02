@@ -42,7 +42,10 @@ contract Chamber is IChamber, Initializable {
         factory = _factory;
     }
 
-    function deposit(address _asset, uint256 _amount) external onlyOwner override {
+    function deposit(address _asset, uint256 _amount)
+        external
+        override
+    {
         require(
             IERC20(_asset).allowance(msg.sender, address(this)) >= _amount,
             "Insufficient allowance"
@@ -104,7 +107,8 @@ contract Chamber is IChamber, Initializable {
             require(_sellToken.approve(_spender, type(uint256).max));
         }
 
-        uint balance = _buyToken.balanceOf(address(this));
+        uint256 balanceBefore = balances[address(_buyToken)];
+
         // Execute swap using 0x Liquidity
         (bool success, bytes memory data) = _swapTarget.call{value: msg.value}(
             _swapCallData
@@ -112,10 +116,10 @@ contract Chamber is IChamber, Initializable {
 
         require(success, getRevertMsg(data));
 
-        uint balanceAfter = _buyToken.balanceOf(address(this));
+        uint256 balanceAfter = _buyToken.balanceOf(address(this));
 
         balances[address(_sellToken)] -= _amount;
-        balances[address(_buyToken)] += (balanceAfter - balance);
+        balances[address(_buyToken)] += (balanceAfter - balanceBefore);
 
         emit ExecuteSwap(address(_buyToken), _amount);
     }
@@ -144,10 +148,15 @@ contract Chamber is IChamber, Initializable {
         return factory;
     }
 
-    function balanceOf(address _asset) external view override returns (uint) {
+    function balanceOf(address _asset)
+        external
+        view
+        override
+        returns (uint256)
+    {
         return balances[_asset];
     }
-
+    
     function getRevertMsg(bytes memory _returnData)
         internal
         pure
