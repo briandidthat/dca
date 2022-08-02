@@ -6,8 +6,8 @@ import "./interfaces/ICETH.sol";
 import "./interfaces/ICERC20.sol";
 import "./interfaces/IChamber.sol";
 import "./interfaces/TokenLibrary.sol";
-import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 
 contract Chamber is IChamber, Initializable {
     address private owner;
@@ -42,7 +42,7 @@ contract Chamber is IChamber, Initializable {
         factory = _factory;
     }
 
-    function deposit(address _asset, uint256 _amount) external override {
+    function deposit(address _asset, uint256 _amount) external onlyOwner override {
         require(
             IERC20(_asset).allowance(msg.sender, address(this)) >= _amount,
             "Insufficient allowance"

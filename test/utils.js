@@ -53,9 +53,7 @@ const chamberFactoryFixture = async () => {
 
   await chamberFactory.deployed();
 
-  return {
-    chamberFactory,
-  };
+  return chamberFactory;
 };
 
 module.exports = {
