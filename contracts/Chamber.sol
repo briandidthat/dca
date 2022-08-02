@@ -1,21 +1,19 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-pragma solidity =0.7.6;
+pragma solidity ^0.8.0;
 
 import "./interfaces/IWETH.sol";
 import "./interfaces/ICETH.sol";
 import "./interfaces/ICERC20.sol";
 import "./interfaces/IChamber.sol";
-import "./interfaces/IUniswapExchange.sol";
 import "./interfaces/TokenLibrary.sol";
-import "./interfaces/Initializable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 
 contract Chamber is IChamber, Initializable {
     address private owner;
     address public factory;
     Strategy public strategy;
     mapping(address => uint256) balances;
-    IUniswapExchange internal uniswapExchange;
     ICETH public constant cETH =
         ICETH(0x4Ddc2D193948926D02f9B1fE9e1daa0718270ED5);
 
@@ -39,17 +37,12 @@ contract Chamber is IChamber, Initializable {
         emit Deposit(address(0), msg.value);
     }
 
-    function initialize(
-        address _factory,
-        address _owner,
-        address _uniswapExchange
-    ) external override initializer {
+    function initialize(address _factory, address _owner) external initializer {
         owner = _owner;
         factory = _factory;
-        uniswapExchange = IUniswapExchange(_uniswapExchange);
     }
 
-    function deposit(address _asset, uint256 _amount) external override {
+    function deposit(address _asset, uint256 _amount) external onlyOwner override {
         require(
             IERC20(_asset).allowance(msg.sender, address(this)) >= _amount,
             "Insufficient allowance"
@@ -98,40 +91,7 @@ contract Chamber is IChamber, Initializable {
         emit Redeem(address(cETH), _amount);
     }
 
-    function buyETH(address _asset, uint _amount)
-        external
-        override
-        onlyOwner
-        returns (uint256)
-    {
-        IERC20 token = IERC20(_asset);
-        require(
-            token.balanceOf(address(this)) >= _amount,
-            "Please deposit stablecoins"
-        );
-
-        if (
-            token.allowance(address(this), address(uniswapExchange)) < _amount
-        ) {
-            token.approve(address(uniswapExchange), _amount);
-        }
-
-        uint amountOut = uniswapExchange.swapForWETH(_amount, _asset);
-        emit ExecuteSwap(WETH, amountOut);
-
-        balances[_asset] -= _amount;
-
-        IWETH(WETH).withdraw(amountOut);
-
-        if (strategy == Strategy.COMPOUND) {
-            cETH.mint{value: _amount}();
-            emit Supply(address(0), _amount);
-        }
-
-        return amountOut;
-    }
-
-    function fillQuote(
+    function executeSwap(
         IERC20 _sellToken,
         IERC20 _buyToken,
         uint256 _amount,
@@ -141,12 +101,21 @@ contract Chamber is IChamber, Initializable {
     ) external payable override {
         // Give `spender` an infinite allowance to spend this contract's `sellToken`
         if (_sellToken.allowance(address(this), _spender) < _amount) {
-            require(_sellToken.approve(_spender, uint256(-1)));
+            require(_sellToken.approve(_spender, type(uint256).max));
         }
-        // Execute swap
-        (bool success, bytes memory data) = _swapTarget.call(_swapCallData);
+
+        uint balance = _buyToken.balanceOf(address(this));
+        // Execute swap using 0x Liquidity
+        (bool success, bytes memory data) = _swapTarget.call{value: msg.value}(
+            _swapCallData
+        );
 
         require(success, getRevertMsg(data));
+
+        uint balanceAfter = _buyToken.balanceOf(address(this));
+
+        balances[address(_sellToken)] -= _amount;
+        balances[address(_buyToken)] += (balanceAfter - balance);
 
         emit ExecuteSwap(address(_buyToken), _amount);
     }
