@@ -12,8 +12,10 @@ import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 contract Chamber is IChamber, Initializable {
     address private owner;
     address public factory;
-    Strategy public strategy;
     mapping(address => uint256) balances;
+    // mapping(uint256 => Strategy) strategies;
+    Strategy[] private strategies;
+
     ICETH public constant cETH =
         ICETH(0x4Ddc2D193948926D02f9B1fE9e1daa0718270ED5);
 
@@ -30,7 +32,7 @@ contract Chamber is IChamber, Initializable {
     }
 
     constructor() {
-        factory = msg.sender;
+        _disableInitializers();
     }
 
     receive() external payable {
@@ -42,10 +44,7 @@ contract Chamber is IChamber, Initializable {
         factory = _factory;
     }
 
-    function deposit(address _asset, uint256 _amount)
-        external
-        override
-    {
+    function deposit(address _asset, uint256 _amount) external override {
         require(
             IERC20(_asset).allowance(msg.sender, address(this)) >= _amount,
             "Insufficient allowance"
@@ -74,6 +73,22 @@ contract Chamber is IChamber, Initializable {
         emit Withdraw(_asset, _amount);
 
         balances[_asset] -= _amount;
+    }
+
+    function withdrawETH(uint256 _amount)
+        external
+        override
+        onlyOwner
+        returns (bool)
+    {
+        require(address(this).balance >= _amount, "Insufficient balance");
+
+        (bool success, ) = owner.call{value: _amount}("");
+        require(success, "Failed to transfer ETH");
+
+        emit Withdraw(address(0), _amount);
+
+        return true;
     }
 
     function supplyETH(uint256 _amount) external override {
@@ -121,23 +136,36 @@ contract Chamber is IChamber, Initializable {
         balances[address(_sellToken)] -= _amount;
         balances[address(_buyToken)] += (balanceAfter - balanceBefore);
 
-        emit ExecuteSwap(address(_buyToken), _amount);
+        emit ExecuteSwap(address(_sellToken), address(_buyToken), _amount);
     }
 
-    function withdrawETH(uint256 _amount)
-        external
-        override
-        onlyOwner
-        returns (bool)
-    {
-        require(address(this).balance >= _amount, "Insufficient balance");
+    function createStrategy(
+        address _buyToken,
+        address _sellToken,
+        uint256 _amount,
+        uint16 _frequency
+    ) external onlyOwner override returns (uint256) {
+        require(
+            balances[_buyToken] <= _amount,
+            "Insufficient funds for Strategy"
+        );
 
-        (bool success, ) = owner.call{value: _amount}("");
-        require(success, "Failed to transfer ETH");
+        uint256 sid = strategies.length;
 
-        emit Withdraw(address(0), _amount);
+        Strategy memory strategy = Strategy({
+            sid: sid,
+            buyToken: _buyToken,
+            sellToken: _sellToken,
+            amount: _amount,
+            timestamp: block.timestamp,
+            frequency: _frequency,
+            status: Status.TAKE
+        });
+        strategies.push(strategy);
 
-        return true;
+        emit NewStrategy(sid, _buyToken, _sellToken, _amount, _frequency);
+
+        return sid;
     }
 
     function getOwner() external view override returns (address) {
@@ -148,6 +176,10 @@ contract Chamber is IChamber, Initializable {
         return factory;
     }
 
+    function getStrategies() external view returns (Strategy[] memory) {
+        return strategies;
+    }
+
     function balanceOf(address _asset)
         external
         view
@@ -156,7 +188,7 @@ contract Chamber is IChamber, Initializable {
     {
         return balances[_asset];
     }
-    
+
     function getRevertMsg(bytes memory _returnData)
         internal
         pure

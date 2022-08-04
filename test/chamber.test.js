@@ -250,4 +250,34 @@ describe("Chamber", () => {
     const factory = await chamber.getFactory();
     expect(factory).to.be.equal(chamberFactory.address);
   });
+
+  // ========================= CREATE STRATEGY =============================
+  it("createStrategy: Should create a strategy and log the strategy id", async () => {
+    const frequency = 7;
+    let tx = await chamber
+      .connect(user)
+      .createStrategy(weth.address, dai.address, daiAmount, frequency);
+    let logs = await tx.wait();
+    const values = logs.events[0].args;
+
+    expect(values.sid).to.be.equal(0);
+    expect(values.amount).to.be.equal(daiAmount);
+    expect(values.frequency).to.be.equal(frequency);
+  });
+
+  // ========================= CREATE STRATEGY =============================
+  it("getStrategies: Should return a list of Strategies containing 1 strategy", async () => {
+    const frequency = 7;
+    await chamber
+      .connect(user)
+      .createStrategy(weth.address, dai.address, daiAmount, frequency);
+
+    const strategies = await chamber.connect(user).getStrategies();
+    const strategy = strategies[0];
+
+    expect(strategies.length).to.be.equal(1);
+    expect(strategy.sid).to.be.equal(0);
+    expect(strategy.amount).to.be.equal(daiAmount);
+    expect(strategy.frequency).to.be.equal(frequency);
+  });
 });
