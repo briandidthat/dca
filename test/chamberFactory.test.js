@@ -8,10 +8,7 @@ describe("ChamberFactory", () => {
 
   beforeEach(async () => {
     [dev, user, ...accounts] = await ethers.getSigners();
-    const contracts = await chamberFactoryFixture();
-
-    chamber = contracts.chamber;
-    chamberFactory = contracts.chamberFactory;
+    chamberFactory = await chamberFactoryFixture();
 
     let tx = await chamberFactory.connect(user).deployChamber();
     let receipt = await tx.wait();
@@ -19,7 +16,7 @@ describe("ChamberFactory", () => {
     // get the chamber we just deployed using the address from logs
     chamber = await ethers.getContractAt(
       "IChamber",
-      receipt.events[0].args.instance
+      receipt.events[1].args.instance
     );
   });
   // ========================= DEPLOY =============================
@@ -39,10 +36,10 @@ describe("ChamberFactory", () => {
   });
 
   it("deployChamber: Should return the users existing chamber", async () => {
-    const existingChamber = await chamberFactory.connect(user).deployChamber();
-    let tx = await existingChamber.wait();
-    let address = await tx.events[0].args.instance;
-    expect(address).to.be.equal(chamber.address);
+    let tx = await chamberFactory.connect(user).deployChamber();
+    let logs = await tx.wait();
+    const existing = logs.events[0].args.instance;
+    expect(existing).to.be.equal(chamber.address);
   });
 
   // ========================= GET CHAMBER =============================

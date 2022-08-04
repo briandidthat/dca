@@ -14,7 +14,7 @@ contract ChamberFactory is Ownable {
     mapping(address => ChamberDetails) private chambers;
     mapping(address => bool) private hasChamber;
 
-    event ChamberLogger(address indexed instance, bytes32 data);
+    event FactoryLogger(address indexed instance, bytes32 data);
     event NewChamber(address indexed instance, address indexed owner);
 
     struct ChamberDetails {
@@ -29,9 +29,9 @@ contract ChamberFactory is Ownable {
 
     function deployChamber() external returns (address instance) {
         if (hasChamber[msg.sender]) {
-            address chmbrAddr = chambers[msg.sender].instance;
-            emit ChamberLogger(chmbrAddr, "Has existing chamber");
-            return chmbrAddr;
+            address existing = chambers[msg.sender].instance;
+            emit FactoryLogger(existing, "User already has a chamber");
+            return existing;
         }
 
         address clone = Clones.clone(implementation);
@@ -49,7 +49,7 @@ contract ChamberFactory is Ownable {
         hasChamber[msg.sender] = true;
         chambers[msg.sender] = chamber;
 
-        emit ChamberLogger(address(this), "State has been updated");
+        emit FactoryLogger(address(this), "State has been updated");
         instance = clone;
     }
 
@@ -62,7 +62,7 @@ contract ChamberFactory is Ownable {
         return chambers[_beneficiary];
     }
 
-    function getInstanceCount() external view returns (uint count) {
+    function getInstanceCount() external view returns (uint256 count) {
         count = instances;
     }
 }
