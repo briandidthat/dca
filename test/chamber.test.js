@@ -1,10 +1,10 @@
 const axios = require("axios");
 const { expect } = require("chai");
-const { ethers, network, waffle } = require("hardhat");
+const { ethers, network, waffle, web3 } = require("hardhat");
 const { WHALE, chamberFactoryFixture, tokenFixture } = require("./utils");
 
 describe("Chamber", () => {
-  let accounts, whale;
+  let accounts, whale, user, attacker;
   let chamber, chamberFactory;
   let weth, dai, usdc;
   let cEth, cUsdc, cDai;
@@ -12,9 +12,10 @@ describe("Chamber", () => {
   const ethAmount = 5n * 10n ** 18n; // 5 ETH
   const daiAmount = 100n * 10n ** 18n; // 100 DAI
   const usdcAmount = 100n * 10n ** 6n; // 100 USDC
+  const chamberFee = ethers.BigNumber.from(web3.utils.toWei("0.05", "ether"));
 
   beforeEach(async () => {
-    [user, ...accounts] = await ethers.getSigners();
+    [user, attacker, ...accounts] = await ethers.getSigners();
     chamberFactory = await chamberFactoryFixture();
     const tokens = await tokenFixture();
 
@@ -25,7 +26,9 @@ describe("Chamber", () => {
     cDai = tokens.cDai;
     cUsdc = tokens.cUsdc;
 
-    let tx = await chamberFactory.connect(user).deployChamber();
+    let tx = await chamberFactory
+      .connect(user)
+      .deployChamber({ value: chamberFee });
     let receipt = await tx.wait();
 
     // get the chamber we just deployed using the address from logs
@@ -51,7 +54,7 @@ describe("Chamber", () => {
     await usdc.connect(user).approve(chamber.address, usdcAmount);
   });
 
-  // ========================= DEPOSIT =============================
+  // ========================= DEPOSIT ERC20 =============================
 
   it("deposit: Should deposit DAI into chamber and update balance", async () => {
     await chamber.connect(user).deposit(dai.address, daiAmount);
@@ -76,7 +79,7 @@ describe("Chamber", () => {
     expect(balance).to.be.equal(ethAmount);
   });
 
-  // ========================= WITHDRAW =============================
+  // ========================= WITHDRAW ERC20 =============================
 
   it("withdraw: Should withdraw DAI from chamber and update balance", async () => {
     await chamber.connect(user).deposit(dai.address, daiAmount);
@@ -94,15 +97,6 @@ describe("Chamber", () => {
     let balance = await chamber.balanceOf(usdc.address);
 
     expect(balance).to.be.equal(0);
-  });
-
-  // ========================= WITHDRAW REVERT =============================
-
-  it("withdraw: Should revert due to caller not being owner", async () => {
-    await chamber.connect(user).deposit(usdc.address, usdcAmount);
-    await expect(
-      chamber.connect(accounts[2]).withdraw(usdc.address, usdcAmount)
-    ).to.be.revertedWith("Restricted to Owner");
   });
 
   // ========================= WITHDRAW ETH =============================
@@ -125,13 +119,22 @@ describe("Chamber", () => {
     expect(userBalanceAfter).to.be.gt(userBalanceBefore);
   });
 
+  // ========================= WITHDRAW ERC20 REVERT =============================
+
+  it("withdraw: Should revert due to caller not being owner", async () => {
+    await chamber.connect(user).deposit(usdc.address, usdcAmount);
+    await expect(
+      chamber.connect(attacker).withdraw(usdc.address, usdcAmount)
+    ).to.be.revertedWith("Restricted to Owner");
+  });
+
   // ========================= WITHDRAW ETH REVERT =============================
 
   it("withdrawETH: Should revert due to caller not being owner", async () => {
     await user.sendTransaction({ to: chamber.address, value: ethAmount });
 
     await expect(
-      chamber.connect(accounts[2]).withdrawETH(ethAmount)
+      chamber.connect(attacker).withdrawETH(ethAmount)
     ).to.be.revertedWith("Restricted to Owner");
   });
   // ========================= SUPPLY ETH =============================
@@ -265,7 +268,7 @@ describe("Chamber", () => {
     expect(values.frequency).to.be.equal(frequency);
   });
 
-  // ========================= CREATE STRATEGY =============================
+  // ========================= GET STRATEGIES =============================
   it("getStrategies: Should return a list of Strategies containing 1 strategy", async () => {
     const frequency = 7;
     await chamber
