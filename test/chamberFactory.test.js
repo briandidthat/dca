@@ -6,11 +6,15 @@ describe("ChamberFactory", () => {
   let accounts, dev;
   let chamber, chamberFactory;
 
+  const chamberFee = ethers.BigNumber.from(web3.utils.toWei("0.05", "ether"));
+
   beforeEach(async () => {
     [dev, user, ...accounts] = await ethers.getSigners();
     chamberFactory = await chamberFactoryFixture();
 
-    let tx = await chamberFactory.connect(user).deployChamber();
+    let tx = await chamberFactory
+      .connect(user)
+      .deployChamber({ value: chamberFee });
     let receipt = await tx.wait();
 
     // get the chamber we just deployed using the address from logs
@@ -29,14 +33,15 @@ describe("ChamberFactory", () => {
   // ========================= DEPLOY CHAMBER =============================
 
   it("deployChamber: Event - Should emit a NewChamber event on deployment", async () => {
-    await expect(chamberFactory.connect(dev).deployChamber()).to.emit(
-      chamberFactory,
-      "NewChamber"
-    );
+    await expect(
+      chamberFactory.connect(dev).deployChamber({ value: chamberFee })
+    ).to.emit(chamberFactory, "NewChamber");
   });
 
   it("deployChamber: Should return the users existing chamber", async () => {
-    let tx = await chamberFactory.connect(user).deployChamber();
+    let tx = await chamberFactory
+      .connect(user)
+      .deployChamber({ value: chamberFee });
     let logs = await tx.wait();
     const existing = logs.events[0].args.instance;
     expect(existing).to.be.equal(chamber.address);

@@ -129,7 +129,7 @@ contract Chamber is IChamber, Initializable {
             _swapCallData
         );
 
-        require(success, getRevertMsg(data));
+        require(success, TokenLibrary.getRevertMsg(data));
 
         uint256 balanceAfter = _buyToken.balanceOf(address(this));
 
@@ -144,7 +144,7 @@ contract Chamber is IChamber, Initializable {
         address _sellToken,
         uint256 _amount,
         uint16 _frequency
-    ) external onlyOwner override returns (uint256) {
+    ) external override onlyOwner returns (uint256) {
         require(
             balances[_buyToken] <= _amount,
             "Insufficient funds for Strategy"
@@ -187,19 +187,5 @@ contract Chamber is IChamber, Initializable {
         returns (uint256)
     {
         return balances[_asset];
-    }
-
-    function getRevertMsg(bytes memory _returnData)
-        internal
-        pure
-        returns (string memory)
-    {
-        if (_returnData.length < 68) return "Transaction reverted silently";
-
-        assembly {
-            _returnData := add(_returnData, 0x04)
-        }
-
-        return abi.decode(_returnData, (string));
     }
 }
