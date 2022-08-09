@@ -9,14 +9,14 @@ interface IChamber {
         TAKE,
         COMPOUND
     }
-
     struct Strategy {
         uint256 sid;
         address buyToken;
         address sellToken;
+        uint16 frequency;
         uint256 amount;
         uint256 timestamp;
-        uint16 frequency;
+        uint256 lastSwap;
         Status status;
     }
 
@@ -58,12 +58,12 @@ interface IChamber {
     function initialize(address factory, address owner) external;
 
     function executeSwap(
-        IERC20 _sellToken,
-        IERC20 _buyToken,
-        uint256 _amount,
-        address _spender,
-        address payable _swapTarget,
-        bytes calldata _swapCallData
+        address sellToken,
+        address buyToken,
+        uint256 amount,
+        address spender,
+        address payable swapTarget,
+        bytes calldata swapCallData
     ) external payable;
 
     function createStrategy(
@@ -72,4 +72,11 @@ interface IChamber {
         uint256 amount,
         uint16 frequency
     ) external returns (uint256);
+
+    function executeStrategy(
+        uint256 sid,
+        address spender,
+        address payable swapTarget,
+        bytes calldata swapCallData
+    ) external;
 }

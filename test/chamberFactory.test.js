@@ -54,7 +54,14 @@ describe("ChamberFactory", () => {
     let fee = await chamberFactory.getFee();
 
     expect(fee).to.be.equal(ethAmount);
-  })
+  });
+
+  it("setFee: EVENT - Should emit FeeChanged event upon change of fee", async () => {
+    await chamberFactory.connect(dev).setFee(ethAmount);
+    let fee = await chamberFactory.getFee();
+
+    expect(fee).to.be.equal(ethAmount);
+  });
 
   // ========================= GET CHAMBER =============================
 

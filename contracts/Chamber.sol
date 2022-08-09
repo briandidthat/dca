@@ -12,8 +12,8 @@ import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 contract Chamber is IChamber, Initializable {
     address private owner;
     address public factory;
-    mapping(address => uint256) balances;
-    // mapping(uint256 => Strategy) strategies;
+    mapping(address => uint256) private balances;
+    mapping(uint256 => Strategy) private strategiesMap;
     Strategy[] private strategies;
 
     ICETH public constant cETH =
@@ -109,36 +109,6 @@ contract Chamber is IChamber, Initializable {
         emit Redeem(address(cETH), _amount);
     }
 
-    function executeSwap(
-        IERC20 _sellToken,
-        IERC20 _buyToken,
-        uint256 _amount,
-        address _spender,
-        address payable _swapTarget,
-        bytes calldata _swapCallData
-    ) external payable override {
-        // Give `spender` an infinite allowance to spend this contract's `sellToken`
-        if (_sellToken.allowance(address(this), _spender) < _amount) {
-            require(_sellToken.approve(_spender, type(uint256).max));
-        }
-
-        uint256 balanceBefore = balances[address(_buyToken)];
-
-        // Execute swap using 0x Liquidity
-        (bool success, bytes memory data) = _swapTarget.call{value: msg.value}(
-            _swapCallData
-        );
-
-        require(success, TokenLibrary.getRevertMsg(data));
-
-        uint256 balanceAfter = _buyToken.balanceOf(address(this));
-
-        balances[address(_sellToken)] -= _amount;
-        balances[address(_buyToken)] += (balanceAfter - balanceBefore);
-
-        emit ExecuteSwap(address(_sellToken), address(_buyToken), _amount);
-    }
-
     function createStrategy(
         address _buyToken,
         address _sellToken,
@@ -154,18 +124,121 @@ contract Chamber is IChamber, Initializable {
 
         Strategy memory strategy = Strategy({
             sid: sid,
-            buyToken: _buyToken,
-            sellToken: _sellToken,
+            buyToken: address(_buyToken),
+            sellToken: address(_sellToken),
             amount: _amount,
+            lastSwap: 0,
             timestamp: block.timestamp,
             frequency: _frequency,
             status: Status.TAKE
         });
+
         strategies.push(strategy);
+        strategiesMap[strategy.sid] = strategy;
 
         emit NewStrategy(sid, _buyToken, _sellToken, _amount, _frequency);
 
         return sid;
+    }
+
+    function executeStrategy(
+        uint256 _sid,
+        address _spender,
+        address payable _swapTarget,
+        bytes calldata _swapCallData
+    ) external onlyOwner {
+        Strategy memory strategy = strategiesMap[_sid];
+
+        require(
+            balances[strategy.sellToken] >= strategy.amount,
+            "Insufficient Balance for strategy"
+        );
+        require(
+            block.timestamp - strategy.lastSwap >= strategy.frequency,
+            "Not ready to be executed"
+        );
+
+        bool success = _executeStrategy(
+            strategy,
+            _spender,
+            _swapTarget,
+            _swapCallData
+        );
+        require(success, "Failed to execute strategy");
+    }
+
+    function executeSwap(
+        address _sellToken,
+        address _buyToken,
+        uint256 _amount,
+        address _spender,
+        address payable _swapTarget,
+        bytes calldata _swapCallData
+    ) external payable override onlyOwner {
+        bool success = _executeSwap(
+            _sellToken,
+            _buyToken,
+            _amount,
+            _spender,
+            _swapTarget,
+            _swapCallData
+        );
+
+        require(success, "Failed to execute swap");
+    }
+
+    function _executeStrategy(
+        Strategy memory _strategy,
+        address _spender,
+        address payable _swapTarget,
+        bytes calldata _swapCallData
+    ) internal returns (bool) {
+        bool success = _executeSwap(
+            _strategy.sellToken,
+            _strategy.buyToken,
+            _strategy.amount,
+            _spender,
+            _swapTarget,
+            _swapCallData
+        );
+
+        require(success);
+
+        _strategy.lastSwap = block.timestamp;
+        strategies[_strategy.sid] = _strategy;
+
+        return success;
+    }
+
+    function _executeSwap(
+        address _sellToken,
+        address _buyToken,
+        uint256 _amount,
+        address _spender,
+        address payable _swapTarget,
+        bytes calldata _swapCallData
+    ) internal returns (bool) {
+        // Give `spender` an infinite allowance to spend this contract's `sellToken`
+        if (IERC20(_sellToken).allowance(address(this), _spender) < _amount) {
+            require(IERC20(_sellToken).approve(_spender, type(uint256).max));
+        }
+
+        uint256 balanceBefore = balances[address(_buyToken)];
+        // Execute swap using 0x Liquidity
+        (bool success, bytes memory data) = _swapTarget.call{value: msg.value}(
+            _swapCallData
+        );
+
+        require(success, TokenLibrary.getRevertMsg(data));
+
+        uint256 balanceAfter = IERC20(_buyToken).balanceOf(address(this));
+
+        balances[_sellToken] -= _amount;
+        balances[_buyToken] += (balanceAfter - balanceBefore);
+
+        emit ExecuteSwap(_sellToken, _buyToken, _amount);
+
+        return true;
     }
 
     function getOwner() external view override returns (address) {
