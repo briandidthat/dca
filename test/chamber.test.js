@@ -202,8 +202,6 @@ describe("Chamber", () => {
 
     const quote = response.data;
 
-    await usdc.connect(user).approve(quote.allowanceTarget, quote.sellAmount);
-
     await chamber
       .connect(user)
       .executeSwap(
@@ -220,6 +218,39 @@ describe("Chamber", () => {
 
     expect(chamberWethBalance).to.be.gt(0);
     expect(chamberBalance).to.be.equal(chamberWethBalance);
+  });
+
+  // ========================= CREATE STRATEGY =============================
+  it("createStrategy: Should create a strategy and log the strategy id", async () => {
+    const frequency = 7;
+    let tx = await chamber
+      .connect(user)
+      .createStrategy(weth.address, dai.address, daiAmount, frequency);
+    let logs = await tx.wait();
+    const values = logs.events[0].args;
+
+    expect(values.sid).to.be.equal(0);
+    expect(values.amount).to.be.equal(daiAmount);
+    expect(values.frequency).to.be.equal(frequency);
+  });
+
+  // ========================= EXECUTE STRATEGY =============================
+  it("executeStrategy: Should execute strategy at position 0", async () => {
+    await chamber.connect(user).deposit(usdc.address, usdcAmount);
+    console.log(usdcAmount);
+    await chamber
+      .connect(user)
+      .createStrategy(weth.address, usdc.address, usdcAmount, 7);
+
+    const response = await axios.get(
+      "https://api.0x.org/swap/v1/quote?sellToken=USDC&buyToken=WETH&sellAmount=100000000"
+    );
+
+    const quote = response.data;
+
+    await chamber
+      .connect(user)
+      .executeStrategy(0, quote.allowanceTarget, quote.to, quote.data);
   });
 
   // ========================= BALANCE OF =============================
@@ -252,20 +283,6 @@ describe("Chamber", () => {
   it("getFactory: Should return the ChamberFactory address", async () => {
     const factory = await chamber.getFactory();
     expect(factory).to.be.equal(chamberFactory.address);
-  });
-
-  // ========================= CREATE STRATEGY =============================
-  it("createStrategy: Should create a strategy and log the strategy id", async () => {
-    const frequency = 7;
-    let tx = await chamber
-      .connect(user)
-      .createStrategy(weth.address, dai.address, daiAmount, frequency);
-    let logs = await tx.wait();
-    const values = logs.events[0].args;
-
-    expect(values.sid).to.be.equal(0);
-    expect(values.amount).to.be.equal(daiAmount);
-    expect(values.frequency).to.be.equal(frequency);
   });
 
   // ========================= GET STRATEGIES =============================

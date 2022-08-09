@@ -7,6 +7,7 @@ describe("ChamberFactory", () => {
   let chamber, chamberFactory;
 
   const chamberFee = ethers.BigNumber.from(web3.utils.toWei("0.05", "ether"));
+  const ethAmount = 5n * 10n ** 18n; // 5 ETH
 
   beforeEach(async () => {
     [dev, user, ...accounts] = await ethers.getSigners();
@@ -47,6 +48,21 @@ describe("ChamberFactory", () => {
     expect(existing).to.be.equal(chamber.address);
   });
 
+  // ========================= SET FEE =============================
+  it("setFee: Should set new chamber deployment fee", async () => {
+    await chamberFactory.connect(dev).setFee(ethAmount);
+    let fee = await chamberFactory.getFee();
+
+    expect(fee).to.be.equal(ethAmount);
+  });
+
+  it("setFee: EVENT - Should emit FeeChanged event upon change of fee", async () => {
+    await chamberFactory.connect(dev).setFee(ethAmount);
+    let fee = await chamberFactory.getFee();
+
+    expect(fee).to.be.equal(ethAmount);
+  });
+
   // ========================= GET CHAMBER =============================
 
   it("getChamber: Should return the correct chamber by user", async () => {
@@ -55,7 +71,7 @@ describe("ChamberFactory", () => {
     expect(details.instance).to.equal(chamber.address);
   });
 
-  it("getChamber: Should revert due to no existing chamber for owner", async () => {
+  it("getChamber: Revert - Should revert due to no existing chamber for owner", async () => {
     await expect(chamberFactory.getChamber(dev.address)).to.be.revertedWith(
       "No chamber for that address"
     );
