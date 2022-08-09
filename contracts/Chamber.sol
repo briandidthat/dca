@@ -147,7 +147,7 @@ contract Chamber is IChamber, Initializable {
         address payable _swapTarget,
         bytes calldata _swapCallData
     ) external onlyOwner {
-        Strategy memory strategy = strategiesMap[_sid];
+        Strategy storage strategy = strategiesMap[_sid];
 
         require(
             balances[strategy.sellToken] >= strategy.amount,
@@ -158,13 +158,19 @@ contract Chamber is IChamber, Initializable {
             "Not ready to be executed"
         );
 
-        bool success = _executeStrategy(
-            strategy,
+        bool success = _executeSwap(
+            strategy.sellToken,
+            strategy.buyToken,
+            strategy.amount,
             _spender,
             _swapTarget,
             _swapCallData
         );
+
         require(success, "Failed to execute strategy");
+
+        strategy.lastSwap = block.timestamp;
+        strategies[strategy.sid] = strategy;
     }
 
     function executeSwap(
@@ -187,29 +193,6 @@ contract Chamber is IChamber, Initializable {
         require(success, "Failed to execute swap");
     }
 
-    function _executeStrategy(
-        Strategy memory _strategy,
-        address _spender,
-        address payable _swapTarget,
-        bytes calldata _swapCallData
-    ) internal returns (bool) {
-        bool success = _executeSwap(
-            _strategy.sellToken,
-            _strategy.buyToken,
-            _strategy.amount,
-            _spender,
-            _swapTarget,
-            _swapCallData
-        );
-
-        require(success);
-
-        _strategy.lastSwap = block.timestamp;
-        strategies[_strategy.sid] = _strategy;
-
-        return success;
-    }
-
     function _executeSwap(
         address _sellToken,
         address _buyToken,
@@ -223,7 +206,7 @@ contract Chamber is IChamber, Initializable {
             require(IERC20(_sellToken).approve(_spender, type(uint256).max));
         }
 
-        uint256 balanceBefore = balances[address(_buyToken)];
+        uint256 balanceBefore = balances[_buyToken];
         // Execute swap using 0x Liquidity
         (bool success, bytes memory data) = _swapTarget.call{value: msg.value}(
             _swapCallData
@@ -247,6 +230,15 @@ contract Chamber is IChamber, Initializable {
 
     function getFactory() external view override returns (address) {
         return factory;
+    }
+
+    function getStrategy(uint256 _sid)
+        external
+        view
+        override
+        returns (Strategy memory)
+    {
+        return strategiesMap[_sid];
     }
 
     function getStrategies() external view returns (Strategy[] memory) {

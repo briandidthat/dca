@@ -6,8 +6,7 @@ const { WHALE, chamberFactoryFixture, tokenFixture } = require("./utils");
 describe("Chamber", () => {
   let accounts, whale, user, attacker;
   let chamber, chamberFactory;
-  let weth, dai, usdc;
-  let cEth, cUsdc, cDai;
+  let weth, cEth, dai, usdc;
 
   const ethAmount = 5n * 10n ** 18n; // 5 ETH
   const daiAmount = 100n * 10n ** 18n; // 100 DAI
@@ -23,8 +22,6 @@ describe("Chamber", () => {
     weth = tokens.weth;
     usdc = tokens.usdc;
     cEth = tokens.cEth;
-    cDai = tokens.cDai;
-    cUsdc = tokens.cUsdc;
 
     let tx = await chamberFactory
       .connect(user)
@@ -237,7 +234,6 @@ describe("Chamber", () => {
   // ========================= EXECUTE STRATEGY =============================
   it("executeStrategy: Should execute strategy at position 0", async () => {
     await chamber.connect(user).deposit(usdc.address, usdcAmount);
-    console.log(usdcAmount);
     await chamber
       .connect(user)
       .createStrategy(weth.address, usdc.address, usdcAmount, 7);
@@ -251,6 +247,12 @@ describe("Chamber", () => {
     await chamber
       .connect(user)
       .executeStrategy(0, quote.allowanceTarget, quote.to, quote.data);
+
+    let strategy = await chamber.getStrategy(0);
+    let balance = await weth.balanceOf(chamber.address);
+
+    expect(strategy.lastSwap).to.be.gt(0);
+    expect(balance).to.be.gt(0);
   });
 
   // ========================= BALANCE OF =============================

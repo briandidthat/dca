@@ -37,12 +37,6 @@ interface IChamber {
         uint16 frequency
     );
 
-    function getOwner() external view returns (address);
-
-    function getFactory() external view returns (address);
-
-    function getStrategies() external view returns (Strategy[] memory);
-
     function supplyETH(uint256 amount) external;
 
     function redeemETH(uint256 amount) external;
@@ -55,6 +49,14 @@ interface IChamber {
 
     function balanceOf(address asset) external view returns (uint256);
 
+    function getOwner() external view returns (address);
+
+    function getFactory() external view returns (address);
+
+    function getStrategies() external view returns (Strategy[] memory);
+
+    function getStrategy(uint256 sid) external view returns (Strategy memory);
+    
     function initialize(address factory, address owner) external;
 
     function executeSwap(
