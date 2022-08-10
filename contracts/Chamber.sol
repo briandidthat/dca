@@ -10,8 +10,9 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 
 contract Chamber is IChamber, Initializable {
-    address private owner;
     address public factory;
+    address private owner;
+    Status private status;
     mapping(address => uint256) private balances;
     mapping(uint256 => Strategy) private strategiesMap;
     Strategy[] private strategies;
@@ -31,6 +32,11 @@ contract Chamber is IChamber, Initializable {
         _;
     }
 
+    modifier isActive() {
+        require(status == Status.ACTIVE, "Chamber is not active");
+        _;
+    }
+
     constructor() {
         _disableInitializers();
     }
@@ -40,8 +46,8 @@ contract Chamber is IChamber, Initializable {
     }
 
     function initialize(address _factory, address _owner) external initializer {
-        owner = _owner;
         factory = _factory;
+        owner = _owner;
     }
 
     function deposit(address _asset, uint256 _amount) external override {
@@ -51,7 +57,8 @@ contract Chamber is IChamber, Initializable {
         );
 
         require(
-            IERC20(_asset).transferFrom(msg.sender, address(this), _amount)
+            IERC20(_asset).transferFrom(msg.sender, address(this), _amount),
+            "Insufficient balance"
         );
 
         balances[_asset] += _amount;
@@ -70,9 +77,9 @@ contract Chamber is IChamber, Initializable {
         );
 
         require(IERC20(_asset).transfer(owner, _amount));
-        emit Withdraw(_asset, _amount);
 
         balances[_asset] -= _amount;
+        emit Withdraw(_asset, _amount);
     }
 
     function withdrawETH(uint256 _amount)
@@ -114,7 +121,7 @@ contract Chamber is IChamber, Initializable {
         address _sellToken,
         uint256 _amount,
         uint16 _frequency
-    ) external override onlyOwner returns (uint256) {
+    ) external override onlyOwner isActive returns (uint256) {
         require(
             balances[_buyToken] <= _amount,
             "Insufficient funds for Strategy"
@@ -124,13 +131,13 @@ contract Chamber is IChamber, Initializable {
 
         Strategy memory strategy = Strategy({
             sid: sid,
-            buyToken: address(_buyToken),
-            sellToken: address(_sellToken),
+            buyToken: _buyToken,
+            sellToken: _sellToken,
             amount: _amount,
             lastSwap: 0,
             timestamp: block.timestamp,
             frequency: _frequency,
-            status: Status.TAKE
+            status: StrategyStatus.TAKE
         });
 
         strategies.push(strategy);
@@ -146,8 +153,8 @@ contract Chamber is IChamber, Initializable {
         address _spender,
         address payable _swapTarget,
         bytes calldata _swapCallData
-    ) external onlyOwner {
-        Strategy memory strategy = strategiesMap[_sid];
+    ) external onlyOwner isActive {
+        Strategy storage strategy = strategiesMap[_sid];
 
         require(
             balances[strategy.sellToken] >= strategy.amount,
@@ -158,13 +165,19 @@ contract Chamber is IChamber, Initializable {
             "Not ready to be executed"
         );
 
-        bool success = _executeStrategy(
-            strategy,
+        bool success = _executeSwap(
+            strategy.sellToken,
+            strategy.buyToken,
+            strategy.amount,
             _spender,
             _swapTarget,
             _swapCallData
         );
+
         require(success, "Failed to execute strategy");
+
+        strategy.lastSwap = block.timestamp;
+        strategies[strategy.sid] = strategy;
     }
 
     function executeSwap(
@@ -187,27 +200,13 @@ contract Chamber is IChamber, Initializable {
         require(success, "Failed to execute swap");
     }
 
-    function _executeStrategy(
-        Strategy memory _strategy,
-        address _spender,
-        address payable _swapTarget,
-        bytes calldata _swapCallData
-    ) internal returns (bool) {
-        bool success = _executeSwap(
-            _strategy.sellToken,
-            _strategy.buyToken,
-            _strategy.amount,
-            _spender,
-            _swapTarget,
-            _swapCallData
-        );
+    function deprecateStrategy(uint256 _sid) external override onlyOwner {
+        strategies[_sid].status = StrategyStatus.DEACTIVATED;
+        emit TerminateStrategy(_sid);
+    }
 
-        require(success);
-
-        _strategy.lastSwap = block.timestamp;
-        strategies[_strategy.sid] = _strategy;
-
-        return success;
+    function setChamberStatus(Status _status) external onlyOwner {
+        status = _status;
     }
 
     function _executeSwap(
@@ -223,7 +222,7 @@ contract Chamber is IChamber, Initializable {
             require(IERC20(_sellToken).approve(_spender, type(uint256).max));
         }
 
-        uint256 balanceBefore = balances[address(_buyToken)];
+        uint256 balanceBefore = balances[_buyToken];
         // Execute swap using 0x Liquidity
         (bool success, bytes memory data) = _swapTarget.call{value: msg.value}(
             _swapCallData
@@ -241,12 +240,20 @@ contract Chamber is IChamber, Initializable {
         return true;
     }
 
-    function getOwner() external view override returns (address) {
+    function getOwner() external view returns (address) {
         return owner;
     }
 
-    function getFactory() external view override returns (address) {
+    function getFactory() external view returns (address) {
         return factory;
+    }
+
+    function getStatus() external view returns (Status) {
+        return status;
+    }
+
+    function getStrategy(uint256 _sid) external view returns (Strategy memory) {
+        return strategiesMap[_sid];
     }
 
     function getStrategies() external view returns (Strategy[] memory) {

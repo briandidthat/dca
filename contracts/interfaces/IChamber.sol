@@ -5,10 +5,16 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 interface IChamber {
     enum Status {
+        ACTIVE,
+        FROZEN,
+        DEPRECATED
+    }
+    enum StrategyStatus {
         DEACTIVATED,
         TAKE,
         COMPOUND
     }
+
     struct Strategy {
         uint256 sid;
         address buyToken;
@@ -17,7 +23,7 @@ interface IChamber {
         uint256 amount;
         uint256 timestamp;
         uint256 lastSwap;
-        Status status;
+        StrategyStatus status;
     }
 
     event Supply(address indexed asset, uint256 amount);
@@ -37,11 +43,9 @@ interface IChamber {
         uint16 frequency
     );
 
-    function getOwner() external view returns (address);
+    event TerminateStrategy(uint256 indexed sid);
 
-    function getFactory() external view returns (address);
-
-    function getStrategies() external view returns (Strategy[] memory);
+    function setChamberStatus(Status status) external;
 
     function supplyETH(uint256 amount) external;
 
@@ -54,6 +58,16 @@ interface IChamber {
     function withdrawETH(uint256 amount) external returns (bool);
 
     function balanceOf(address asset) external view returns (uint256);
+
+    function getOwner() external view returns (address);
+
+    function getFactory() external view returns (address);
+
+    function getStatus() external view returns (Status);
+
+    function getStrategies() external view returns (Strategy[] memory);
+
+    function getStrategy(uint256 sid) external view returns (Strategy memory);
 
     function initialize(address factory, address owner) external;
 
@@ -79,4 +93,6 @@ interface IChamber {
         address payable swapTarget,
         bytes calldata swapCallData
     ) external;
+
+    function deprecateStrategy(uint256 _sid) external;
 }
