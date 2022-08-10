@@ -49,6 +49,7 @@ describe("ChamberFactory", () => {
   });
 
   // ========================= SET FEE =============================
+  
   it("setFee: Should set new chamber deployment fee", async () => {
     await chamberFactory.connect(dev).setFee(ethAmount);
     let fee = await chamberFactory.getFee();

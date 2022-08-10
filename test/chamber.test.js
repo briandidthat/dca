@@ -218,6 +218,7 @@ describe("Chamber", () => {
   });
 
   // ========================= CREATE STRATEGY =============================
+
   it("createStrategy: Should create a strategy and log the strategy id", async () => {
     const frequency = 7;
     let tx = await chamber
@@ -232,6 +233,7 @@ describe("Chamber", () => {
   });
 
   // ========================= EXECUTE STRATEGY =============================
+  
   it("executeStrategy: Should execute strategy at position 0", async () => {
     await chamber.connect(user).deposit(usdc.address, usdcAmount);
     await chamber
@@ -254,6 +256,14 @@ describe("Chamber", () => {
     expect(strategy.lastSwap).to.be.gt(0);
     expect(balance).to.be.gt(0);
   });
+
+  // ========================= SET STATUS =============================
+  it("setStatus: Should set the chamber status to DEPRECATED", async () => {
+    await chamber.connect(user).setChamberStatus(2);
+    let status = await chamber.connect(user).getStatus();
+
+    expect(status).to.be.equal(2);
+  })
 
   // ========================= BALANCE OF =============================
 
