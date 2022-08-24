@@ -46,7 +46,12 @@ const tokenFixture = async () => {
 };
 
 const chamberFactoryFixture = async () => {
-  const ChamberFactory = await ethers.getContractFactory("ChamberFactory");
+  const library = await tokenLibraryFixture();
+  const ChamberFactory = await ethers.getContractFactory("ChamberFactory", {
+    libraries: {
+      TokenLibrary: library.address,
+    },
+  });
 
   const chamberFactory = await ChamberFactory.deploy();
 

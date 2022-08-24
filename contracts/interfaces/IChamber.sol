@@ -17,6 +17,7 @@ interface IChamber {
 
     struct Strategy {
         uint256 sid;
+        bytes32 hashId;
         address buyToken;
         address sellToken;
         uint16 frequency;
@@ -43,7 +44,8 @@ interface IChamber {
         uint16 frequency
     );
 
-    event TerminateStrategy(uint256 indexed sid);
+    event TerminateStrategy(bytes32 indexed hashId);
+    event NewOperator(address indexed operator);
 
     function setChamberStatus(Status status) external;
 
@@ -67,9 +69,13 @@ interface IChamber {
 
     function getStrategies() external view returns (Strategy[] memory);
 
-    function getStrategy(uint256 sid) external view returns (Strategy memory);
+    function getStrategy(bytes32 hash) external view returns (Strategy memory);
 
-    function initialize(address factory, address owner) external;
+    function initialize(
+        address factory,
+        address owner,
+        address operator
+    ) external;
 
     function executeSwap(
         address sellToken,
@@ -88,11 +94,11 @@ interface IChamber {
     ) external returns (uint256);
 
     function executeStrategy(
-        uint256 sid,
+        bytes32 hashId,
         address spender,
         address payable swapTarget,
         bytes calldata swapCallData
     ) external;
 
-    function deprecateStrategy(uint256 _sid) external;
+    function deprecateStrategy(bytes32 hashId) external;
 }
