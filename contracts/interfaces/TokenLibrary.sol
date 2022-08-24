@@ -37,7 +37,7 @@ library TokenLibrary {
     }
 
     function getRevertMsg(bytes memory _returnData)
-        internal
+        external
         pure
         returns (string memory)
     {
@@ -48,5 +48,13 @@ library TokenLibrary {
         }
 
         return abi.decode(_returnData, (string));
+    }
+
+    function getHash(
+        address _owner,
+        address _buyToken,
+        address _sellToken
+    ) external pure returns (bytes32) {
+        return keccak256(abi.encodePacked(_owner, _buyToken, _sellToken));
     }
 }

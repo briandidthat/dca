@@ -30,6 +30,11 @@ contract ChamberFactory is Ownable {
         implementation = address(new Chamber());
     }
 
+    function setFee(uint256 _newFee) external onlyOwner {
+        emit FeeChanged(fee, _newFee);
+        fee = _newFee;
+    }
+
     function deployChamber() external payable returns (address instance) {
         require(msg.value >= fee, "Must pay fee to deploy chamber");
 
@@ -40,7 +45,7 @@ contract ChamberFactory is Ownable {
         }
 
         address clone = Clones.clone(implementation);
-        IChamber(clone).initialize(address(this), msg.sender);
+        IChamber(clone).initialize(address(this), msg.sender, msg.sender);
 
         emit NewChamber(clone, msg.sender);
         // send fees back to owner
@@ -62,11 +67,6 @@ contract ChamberFactory is Ownable {
         instance = clone;
     }
 
-    function setFee(uint256 _newFee) external onlyOwner {
-        emit FeeChanged(fee, _newFee);
-        fee = _newFee;
-    }
-
     function getChamber(address _beneficiary)
         external
         view
@@ -76,11 +76,11 @@ contract ChamberFactory is Ownable {
         return chambers[_beneficiary];
     }
 
-    function getInstanceCount() external view returns (uint256) {
-        return instances;
-    }
-
     function getFee() external view returns (uint256) {
         return fee;
+    }
+
+    function getInstanceCount() external view returns (uint256) {
+        return instances;
     }
 }

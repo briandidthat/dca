@@ -12,9 +12,12 @@ import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 contract Chamber is IChamber, Initializable {
     address public factory;
     address private owner;
+    address private operator;
     Status private status;
+    uint256 private activeStrategies;
     mapping(address => uint256) private balances;
     mapping(uint256 => Strategy) private strategiesMap;
+    mapping(bytes32 => Strategy) private strategiesMapBytes;
     Strategy[] private strategies;
 
     ICETH public constant cETH =
@@ -37,6 +40,14 @@ contract Chamber is IChamber, Initializable {
         _;
     }
 
+    modifier onlyAuthorized() {
+        require(
+            (msg.sender == owner || msg.sender == operator),
+            "Unauthorized"
+        );
+        _;
+    }
+
     constructor() {
         _disableInitializers();
     }
@@ -45,9 +56,22 @@ contract Chamber is IChamber, Initializable {
         emit Deposit(address(0), msg.value);
     }
 
-    function initialize(address _factory, address _owner) external initializer {
+    function initialize(
+        address _factory,
+        address _owner,
+        address _operator
+    ) external initializer {
         factory = _factory;
         owner = _owner;
+        operator = _operator;
+    }
+
+    function setChamberStatus(Status _status) external onlyOwner {
+        status = _status;
+    }
+
+    function setOperator(address _operator) external onlyOwner {
+        operator = _operator;
     }
 
     function deposit(address _asset, uint256 _amount) external override {
@@ -123,14 +147,26 @@ contract Chamber is IChamber, Initializable {
         uint16 _frequency
     ) external override onlyOwner isActive returns (uint256) {
         require(
-            balances[_buyToken] <= _amount,
+            (_buyToken != address(0) && _sellToken != address(0)),
+            "Cannot buy or sell to Zero address"
+        );
+        require(
+            balances[_sellToken] >= _amount,
             "Insufficient funds for Strategy"
         );
 
         uint256 sid = strategies.length;
+        bytes32 hashed = keccak256(
+            abi.encodePacked(owner, _buyToken, _sellToken)
+        );
+
+        if (strategiesMapBytes[hashed].sellToken != address(0)) {
+            revert("Strategy for that pair already exists");
+        }
 
         Strategy memory strategy = Strategy({
             sid: sid,
+            hashId: hashed,
             buyToken: _buyToken,
             sellToken: _sellToken,
             amount: _amount,
@@ -141,7 +177,8 @@ contract Chamber is IChamber, Initializable {
         });
 
         strategies.push(strategy);
-        strategiesMap[strategy.sid] = strategy;
+        strategiesMapBytes[hashed] = strategy;
+        activeStrategies++;
 
         emit NewStrategy(sid, _buyToken, _sellToken, _amount, _frequency);
 
@@ -149,12 +186,12 @@ contract Chamber is IChamber, Initializable {
     }
 
     function executeStrategy(
-        uint256 _sid,
+        bytes32 _hashId,
         address _spender,
         address payable _swapTarget,
         bytes calldata _swapCallData
-    ) external onlyOwner isActive {
-        Strategy storage strategy = strategiesMap[_sid];
+    ) external onlyAuthorized isActive {
+        Strategy storage strategy = strategiesMapBytes[_hashId];
 
         require(
             balances[strategy.sellToken] >= strategy.amount,
@@ -177,7 +214,14 @@ contract Chamber is IChamber, Initializable {
         require(success, "Failed to execute strategy");
 
         strategy.lastSwap = block.timestamp;
-        strategies[strategy.sid] = strategy;
+        strategiesMapBytes[_hashId] = strategy;
+    }
+
+    function deprecateStrategy(bytes32 _hash) external override onlyOwner {
+        Strategy storage strategy = strategiesMapBytes[_hash];
+        strategy.status = StrategyStatus.DEACTIVATED;
+        activeStrategies--;
+        emit TerminateStrategy(_hash);
     }
 
     function executeSwap(
@@ -198,15 +242,6 @@ contract Chamber is IChamber, Initializable {
         );
 
         require(success, "Failed to execute swap");
-    }
-
-    function deprecateStrategy(uint256 _sid) external override onlyOwner {
-        strategies[_sid].status = StrategyStatus.DEACTIVATED;
-        emit TerminateStrategy(_sid);
-    }
-
-    function setChamberStatus(Status _status) external onlyOwner {
-        status = _status;
     }
 
     function _executeSwap(
@@ -252,8 +287,15 @@ contract Chamber is IChamber, Initializable {
         return status;
     }
 
-    function getStrategy(uint256 _sid) external view returns (Strategy memory) {
-        return strategiesMap[_sid];
+    function getStrategy(bytes32 _hash)
+        external
+        view
+        returns (Strategy memory)
+    {
+        Strategy memory strategy = strategiesMapBytes[_hash];
+
+        require(strategy.buyToken != address(0), "Strategy not found");
+        return strategy;
     }
 
     function getStrategies() external view returns (Strategy[] memory) {
