@@ -4,7 +4,7 @@ const { ethers, network, waffle, web3 } = require("hardhat");
 const { WHALE, chamberFactoryFixture, tokenFixture } = require("./utils");
 
 describe("Chamber", () => {
-  let accounts, whale, user, attacker;
+  let accounts, whale, user, operator, aattacker;
   let chamber, chamberFactory;
   let weth, cEth, dai, usdc;
 
@@ -14,7 +14,7 @@ describe("Chamber", () => {
   const chamberFee = ethers.BigNumber.from(web3.utils.toWei("0.05", "ether"));
 
   beforeEach(async () => {
-    [user, attacker, ...accounts] = await ethers.getSigners();
+    [user, operator, attacker, ...accounts] = await ethers.getSigners();
     chamberFactory = await chamberFactoryFixture();
     const tokens = await tokenFixture();
 
@@ -229,14 +229,20 @@ describe("Chamber", () => {
     let logs = await tx.wait();
     const values = logs.events[0].args;
 
-    expect(values.sid).to.be.equal(0);
+    const hash = web3.utils.soliditySha3(
+      user.address,
+      weth.address,
+      dai.address
+    );
+
+    expect(values.hashId).to.be.equal(hash);
     expect(values.amount).to.be.equal(daiAmount);
     expect(values.frequency).to.be.equal(frequency);
   });
 
   // ========================= EXECUTE STRATEGY =============================
 
-  it("executeStrategy: Should execute strategy at position 0", async () => {
+  it("executeStrategy: Should execute strategy by owner", async () => {
     await chamber.connect(user).deposit(usdc.address, usdcAmount);
     await chamber
       .connect(user)
@@ -264,12 +270,48 @@ describe("Chamber", () => {
     expect(balance).to.be.gt(0);
   });
 
+  it("executeStrategy: Should execute strategy by operator", async () => {
+    await chamber.connect(user).deposit(usdc.address, usdcAmount);
+    await chamber.connect(user).setOperator(operator.address);
+    await chamber
+      .connect(user)
+      .createStrategy(weth.address, usdc.address, usdcAmount, 7);
+
+    const response = await axios.get(
+      "https://api.0x.org/swap/v1/quote?sellToken=USDC&buyToken=WETH&sellAmount=100000000"
+    );
+
+    const quote = response.data;
+    const hash = web3.utils.soliditySha3(
+      user.address,
+      weth.address,
+      usdc.address
+    );
+
+    await chamber
+      .connect(operator)
+      .executeStrategy(hash, quote.allowanceTarget, quote.to, quote.data);
+
+    const strategy = await chamber.getStrategy(hash);
+    const balance = await weth.balanceOf(chamber.address);
+
+    expect(strategy.lastSwap).to.be.gt(0);
+    expect(balance).to.be.gt(0);
+  });
+
   // ========================= SET STATUS =============================
   it("setStatus: Should set the chamber status to DEPRECATED", async () => {
     await chamber.connect(user).setChamberStatus(2);
     let status = await chamber.connect(user).getStatus();
 
     expect(status).to.be.equal(2);
+  });
+
+  // ========================= SET OPERATOR =============================
+  it("getOperator: Should set the operator address", async () => {
+    await chamber.connect(user).setOperator(operator.address);
+    const operatorAddr = await chamber.getOperator();
+    expect(operatorAddr).to.be.equal(operator.address);
   });
 
   // ========================= BALANCE OF =============================
@@ -305,19 +347,24 @@ describe("Chamber", () => {
   });
 
   // ========================= GET ALL STRATEGIES =============================
-  it("getStrategies: Should return a list of Strategies containing 1 strategy", async () => {
+  it("getStrategies: Should return a list of Strategies containing 2 strategies", async () => {
     await chamber.connect(user).deposit(dai.address, daiAmount);
+    await chamber.connect(user).deposit(usdc.address, usdcAmount);
 
     const frequency = 7;
     await chamber
       .connect(user)
       .createStrategy(weth.address, dai.address, daiAmount, frequency);
 
+    await chamber
+      .connect(user)
+      .createStrategy(weth.address, usdc.address, usdcAmount, frequency);
+
     const strategies = await chamber.connect(user).getStrategies();
     const strategy = strategies[0];
 
-    expect(strategies.length).to.be.equal(1);
-    expect(strategy.sid).to.be.equal(0);
+    expect(strategies.length).to.be.equal(2);
+    expect(strategy.idx).to.be.equal(0);
     expect(strategy.amount).to.be.equal(daiAmount);
     expect(strategy.frequency).to.be.equal(frequency);
   });

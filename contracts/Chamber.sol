@@ -155,7 +155,7 @@ contract Chamber is IChamber, Initializable {
             "Insufficient funds for Strategy"
         );
 
-        uint256 sid = strategyList.length;
+        uint256 idx = strategyList.length;
         bytes32 hashed = keccak256(
             abi.encodePacked(owner, _buyToken, _sellToken)
         );
@@ -165,7 +165,7 @@ contract Chamber is IChamber, Initializable {
         }
 
         Strategy memory strategy = Strategy({
-            sid: sid,
+            idx: idx,
             hashId: hashed,
             buyToken: _buyToken,
             sellToken: _sellToken,
@@ -176,13 +176,25 @@ contract Chamber is IChamber, Initializable {
             status: StrategyStatus.TAKE
         });
 
-        strategyList.push(strategy);
         strategies[hashed] = strategy;
+        strategyList.push(strategy);
         activeStrategies++;
 
-        emit NewStrategy(sid, _buyToken, _sellToken, _amount, _frequency);
+        emit NewStrategy(hashed, _buyToken, _sellToken, _amount, _frequency);
 
-        return sid;
+        return idx;
+    }
+
+    function updateStrategy(Strategy memory strategy) external onlyOwner {
+        strategies[strategy.hashId] = strategy;
+        emit UpdateStrategy(strategy.hashId);
+    }
+
+    function deprecateStrategy(bytes32 _hash) external override onlyOwner {
+        Strategy storage strategy = strategies[_hash];
+        strategy.status = StrategyStatus.DEACTIVATED;
+        activeStrategies--;
+        emit TerminateStrategy(_hash);
     }
 
     function executeStrategy(
@@ -215,13 +227,6 @@ contract Chamber is IChamber, Initializable {
 
         strategy.lastSwap = block.timestamp;
         strategies[_hashId] = strategy;
-    }
-
-    function deprecateStrategy(bytes32 _hash) external override onlyOwner {
-        Strategy storage strategy = strategies[_hash];
-        strategy.status = StrategyStatus.DEACTIVATED;
-        activeStrategies--;
-        emit TerminateStrategy(_hash);
     }
 
     function executeSwap(
@@ -257,7 +262,6 @@ contract Chamber is IChamber, Initializable {
             require(IERC20(_sellToken).approve(_spender, type(uint256).max));
         }
 
-        uint256 balanceBefore = balances[_buyToken];
         // Execute swap using 0x Liquidity
         (bool success, bytes memory data) = _swapTarget.call{value: msg.value}(
             _swapCallData
@@ -265,11 +269,8 @@ contract Chamber is IChamber, Initializable {
 
         require(success, TokenLibrary.getRevertMsg(data));
 
-        uint256 balanceAfter = IERC20(_buyToken).balanceOf(address(this));
-
+        balances[_buyToken] = IERC20(_buyToken).balanceOf(address(this));
         balances[_sellToken] -= _amount;
-        balances[_buyToken] += (balanceAfter - balanceBefore);
-
         emit ExecuteSwap(_sellToken, _buyToken, _amount);
 
         return true;
@@ -277,6 +278,10 @@ contract Chamber is IChamber, Initializable {
 
     function getOwner() external view returns (address) {
         return owner;
+    }
+
+    function getOperator() external view returns (address) {
+        return operator;
     }
 
     function getFactory() external view returns (address) {
@@ -300,6 +305,10 @@ contract Chamber is IChamber, Initializable {
 
     function getStrategies() external view returns (Strategy[] memory) {
         return strategyList;
+    }
+
+    function getActiveStrategies() external view returns (uint256) {
+        return activeStrategies;
     }
 
     function balanceOf(address _asset)

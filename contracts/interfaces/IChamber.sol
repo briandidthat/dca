@@ -16,7 +16,7 @@ interface IChamber {
     }
 
     struct Strategy {
-        uint256 sid;
+        uint256 idx;
         bytes32 hashId;
         address buyToken;
         address sellToken;
@@ -37,17 +37,20 @@ interface IChamber {
         uint256 amount
     );
     event NewStrategy(
-        uint256 indexed sid,
+        bytes32 indexed hashId,
         address indexed buyToken,
         address indexed sellToken,
         uint256 amount,
         uint16 frequency
     );
 
+    event UpdateStrategy(bytes32 indexed hashId);
     event TerminateStrategy(bytes32 indexed hashId);
     event NewOperator(address indexed operator);
 
     function setChamberStatus(Status status) external;
+
+    function setOperator(address) external;
 
     function supplyETH(uint256 amount) external;
 
@@ -64,6 +67,8 @@ interface IChamber {
     function getOwner() external view returns (address);
 
     function getFactory() external view returns (address);
+
+    function getOperator() external view returns (address);
 
     function getStatus() external view returns (Status);
 
@@ -92,6 +97,8 @@ interface IChamber {
         uint256 amount,
         uint16 frequency
     ) external returns (uint256);
+
+    function updateStrategy(Strategy memory strategy) external;
 
     function executeStrategy(
         bytes32 hashId,
