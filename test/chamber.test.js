@@ -4,7 +4,7 @@ const { ethers, network, waffle, web3 } = require("hardhat");
 const { WHALE, chamberFactoryFixture, tokenFixture } = require("./utils");
 
 describe("Chamber", () => {
-  let accounts, whale, user, operator, aattacker;
+  let accounts, whale, user, operator, attacker;
   let chamber, chamberFactory;
   let weth, cEth, dai, usdc;
 

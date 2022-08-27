@@ -15,12 +15,16 @@ task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
 });
 
 module.exports = {
+  gasReporter: {
+    currency: "USD",
+    coinmarketcap: process.env.CMC_API_KEY,
+  },
   solidity: "0.8.15",
   networks: {
     hardhat: {
       forking: {
         url: process.env.ALCHEMY_URL,
-        blockNumber: 15406288,
+        blockNumber: 15419229,
       },
     },
   },
