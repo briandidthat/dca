@@ -14,6 +14,11 @@ task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
   }
 });
 
+task("balance", "Prints balance of user", async (taskArgs, hre) => {
+  const [account] = await hre.ethers.getSigners();
+  console.log(await hre.ethers.provider.getBalance(account.address));
+});
+
 module.exports = {
   gasReporter: {
     currency: "USD",

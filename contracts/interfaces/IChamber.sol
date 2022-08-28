@@ -44,6 +44,7 @@ interface IChamber {
         uint16 frequency
     );
 
+    event ExecuteStrategy(bytes32 indexed hashId);
     event UpdateStrategy(bytes32 indexed hashId);
     event TerminateStrategy(bytes32 indexed hashId);
     event NewOperator(address indexed operator);

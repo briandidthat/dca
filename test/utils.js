@@ -1,4 +1,4 @@
-const { ethers } = require("hardhat");
+const { ethers, web3 } = require("hardhat");
 
 const WHALE = "0x7a8edc710ddeadddb0b539de83f3a306a621e823";
 const USDT_WHALE = "0xa929022c9107643515f5c777ce9a910f0d1e490c";
@@ -60,8 +60,25 @@ const chamberFactoryFixture = async () => {
   return chamberFactory;
 };
 
+const getHash = (...args) => {
+  return web3.utils.soliditySha3(...args);
+};
+
+const inspectForEvent = (target, events) => {
+  let present = false;
+
+  events.map((item) => {
+    if (item.event === target) {
+      present = true;
+    }
+  });
+  return present;
+};
+
 module.exports = {
+  getHash,
   tokenFixture,
+  inspectForEvent,
   chamberFactoryFixture,
   TOKEN_DETAILS,
   WHALE,
