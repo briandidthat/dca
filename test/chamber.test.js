@@ -1,10 +1,16 @@
 const axios = require("axios");
 const { expect } = require("chai");
-const { ethers, network, waffle, web3 } = require("hardhat");
-const { WHALE, chamberFactoryFixture, tokenFixture } = require("./utils");
+const { ethers, network, web3 } = require("hardhat");
+const {
+  WHALE,
+  getHash,
+  inspectForEvent,
+  chamberFactoryFixture,
+  tokenFixture,
+} = require("./utils");
 
 describe("Chamber", () => {
-  let accounts, whale, user, operator, aattacker;
+  let accounts, whale, user, operator, attacker;
   let chamber, chamberFactory;
   let weth, cEth, dai, usdc;
 
@@ -71,7 +77,7 @@ describe("Chamber", () => {
 
   it("depositETH: Should deposit ETH into chamber and update balance", async () => {
     await user.sendTransaction({ to: chamber.address, value: ethAmount });
-    let balance = await waffle.provider.getBalance(chamber.address);
+    let balance = await ethers.provider.getBalance(chamber.address);
 
     expect(balance).to.be.equal(ethAmount);
   });
@@ -101,15 +107,15 @@ describe("Chamber", () => {
   it("withdrawETH: Should withdraw ETH from chamber", async () => {
     await user.sendTransaction({ to: chamber.address, value: ethAmount });
 
-    let userBalanceBefore = await waffle.provider.getBalance(user.address);
-    let chamberBalanceBefore = await waffle.provider.getBalance(
+    let userBalanceBefore = await ethers.provider.getBalance(user.address);
+    let chamberBalanceBefore = await ethers.provider.getBalance(
       chamber.address
     );
 
     await chamber.connect(user).withdrawETH(ethAmount);
 
-    let userBalanceAfter = await waffle.provider.getBalance(user.address);
-    let chamberBalanceAfter = await waffle.provider.getBalance(chamber.address);
+    let userBalanceAfter = await ethers.provider.getBalance(user.address);
+    let chamberBalanceAfter = await ethers.provider.getBalance(chamber.address);
 
     expect(chamberBalanceBefore).to.be.equal(ethAmount);
     expect(chamberBalanceAfter).to.be.equal(0);
@@ -152,11 +158,11 @@ describe("Chamber", () => {
     await chamber.connect(user).supplyETH(ethAmount);
 
     let cEthBalance = await cEth.balanceOf(chamber.address);
-    let balanceBefore = await waffle.provider.getBalance(chamber.address);
+    let balanceBefore = await ethers.provider.getBalance(chamber.address);
 
     await chamber.connect(user).redeemETH(cEthBalance);
 
-    let balanceAfter = await waffle.provider.getBalance(chamber.address);
+    let balanceAfter = await ethers.provider.getBalance(chamber.address);
 
     expect(balanceAfter).to.be.gt(balanceBefore);
   });
@@ -229,15 +235,49 @@ describe("Chamber", () => {
     let logs = await tx.wait();
     const values = logs.events[0].args;
 
-    const hash = web3.utils.soliditySha3(
-      user.address,
-      weth.address,
-      dai.address
-    );
+    const hash = getHash(user.address, weth.address, dai.address);
 
     expect(values.hashId).to.be.equal(hash);
     expect(values.amount).to.be.equal(daiAmount);
     expect(values.frequency).to.be.equal(frequency);
+    expect(inspectForEvent("NewStrategy", logs.events)).to.be.equal(true);
+  });
+
+  it("updateStrategy: Should update the strategy at the given hash if found", async () => {
+    const frequency = 1;
+    await chamber.connect(user).deposit(usdc.address, usdcAmount);
+
+    await chamber
+      .connect(user)
+      .createStrategy(weth.address, usdc.address, usdcAmount, frequency);
+
+    const hash = getHash(user.address, weth.address, usdc.address);
+    const strategy = await chamber.connect(user).getStrategy(hash);
+    const updatedFrequency = 10;
+    const updatedAmount = usdcAmount + usdcAmount;
+
+    const tx = await chamber.connect(user).updateStrategy({
+      idx: strategy.idx,
+      hashId: strategy.hashId,
+      buyToken: strategy.buyToken,
+      sellToken: strategy.sellToken,
+      frequency: updatedFrequency,
+      amount: updatedAmount,
+      timestamp: strategy.timestamp,
+      lastSwap: strategy.lastSwap,
+      status: strategy.status,
+    });
+
+    const logs = await tx.wait();
+    const events = logs.events;
+
+    const updatedStrategy = await chamber
+      .connect(user)
+      .getStrategy(strategy.hashId);
+
+    expect(updatedStrategy.amount).to.be.equal(updatedAmount);
+    expect(updatedStrategy.frequency).to.be.equal(updatedFrequency);
+    expect(inspectForEvent("UpdateStrategy", events)).to.be.equal(true);
   });
 
   // ========================= EXECUTE STRATEGY =============================
@@ -253,21 +293,22 @@ describe("Chamber", () => {
     );
 
     const quote = response.data;
-    const hash = web3.utils.soliditySha3(
-      user.address,
-      weth.address,
-      usdc.address
-    );
+    const hash = getHash(user.address, weth.address, usdc.address);
 
-    await chamber
+    let tx = await chamber
       .connect(user)
       .executeStrategy(hash, quote.allowanceTarget, quote.to, quote.data);
+
+    tx = await tx.wait();
+    const events = tx.events;
 
     const strategy = await chamber.getStrategy(hash);
     const balance = await weth.balanceOf(chamber.address);
 
-    expect(strategy.lastSwap).to.be.gt(0);
     expect(balance).to.be.gt(0);
+    expect(strategy.lastSwap).to.be.gt(0);
+    expect(inspectForEvent("ExecuteSwap", events)).to.be.equal(true);
+    expect(inspectForEvent("ExecuteStrategy", events)).to.be.equal(true);
   });
 
   it("executeStrategy: Should execute strategy by operator", async () => {
@@ -282,21 +323,22 @@ describe("Chamber", () => {
     );
 
     const quote = response.data;
-    const hash = web3.utils.soliditySha3(
-      user.address,
-      weth.address,
-      usdc.address
-    );
+    const hash = getHash(user.address, weth.address, usdc.address);
 
-    await chamber
+    let tx = await chamber
       .connect(operator)
       .executeStrategy(hash, quote.allowanceTarget, quote.to, quote.data);
+
+    tx = await tx.wait();
+    const events = tx.events;
 
     const strategy = await chamber.getStrategy(hash);
     const balance = await weth.balanceOf(chamber.address);
 
-    expect(strategy.lastSwap).to.be.gt(0);
     expect(balance).to.be.gt(0);
+    expect(strategy.lastSwap).to.be.gt(0);
+    expect(inspectForEvent("ExecuteSwap", events)).to.be.equal(true);
+    expect(inspectForEvent("ExecuteStrategy", events)).to.be.equal(true);
   });
 
   // ========================= SET STATUS =============================
@@ -308,10 +350,14 @@ describe("Chamber", () => {
   });
 
   // ========================= SET OPERATOR =============================
-  it("getOperator: Should set the operator address", async () => {
-    await chamber.connect(user).setOperator(operator.address);
+  it("setOperator: Should set the operator address", async () => {
+    let tx = await chamber.connect(user).setOperator(operator.address);
+    tx = await tx.wait();
+    const events = tx.events;
+
     const operatorAddr = await chamber.getOperator();
     expect(operatorAddr).to.be.equal(operator.address);
+    expect(inspectForEvent("NewOperator", events)).to.be.equal(true);
   });
 
   // ========================= BALANCE OF =============================
@@ -333,17 +379,22 @@ describe("Chamber", () => {
     expect(usdcBalance).to.be.equal(usdcWithdrawal);
   });
 
-  // ========================= GET OWNER =============================
-  it("getOwner: Should return the chamber owner address", async () => {
-    const owner = await chamber.getOwner();
-    expect(owner).to.be.equal(user.address);
-  });
+  // ========================= GET STRATEGY =============================
+  it("getStrategy: Should return the strategy at the given hash if found", async () => {
+    const frequency = 1;
+    await chamber.connect(user).deposit(usdc.address, usdcAmount);
 
-  // ========================= GET FACTORY =============================
+    await chamber
+      .connect(user)
+      .createStrategy(weth.address, usdc.address, usdcAmount, frequency);
 
-  it("getFactory: Should return the ChamberFactory address", async () => {
-    const factory = await chamber.getFactory();
-    expect(factory).to.be.equal(chamberFactory.address);
+    const hash = getHash(user.address, weth.address, usdc.address);
+    const strategy = await chamber.connect(user).getStrategy(hash);
+
+    expect(strategy.hashId).to.be.equal(hash);
+    expect(strategy.lastSwap).to.be.equal(0);
+    expect(strategy.amount).to.be.equal(usdcAmount);
+    expect(strategy.frequency).to.be.equal(frequency);
   });
 
   // ========================= GET ALL STRATEGIES =============================
@@ -369,25 +420,16 @@ describe("Chamber", () => {
     expect(strategy.frequency).to.be.equal(frequency);
   });
 
-  // ========================= GET STRATEGY =============================
-  it("getStrategy: Should return the strategy at the given hash if found", async () => {
-    const frequency = 1;
-    await chamber.connect(user).deposit(usdc.address, usdcAmount);
+  // ========================= GET OWNER =============================
+  it("getOwner: Should return the chamber owner address", async () => {
+    const owner = await chamber.getOwner();
+    expect(owner).to.be.equal(user.address);
+  });
 
-    await chamber
-      .connect(user)
-      .createStrategy(weth.address, usdc.address, usdcAmount, frequency);
+  // ========================= GET FACTORY =============================
 
-    const hash = web3.utils.soliditySha3(
-      user.address,
-      weth.address,
-      usdc.address
-    );
-    const strategy = await chamber.connect(user).getStrategy(hash);
-
-    expect(strategy.hashId).to.be.equal(hash);
-    expect(strategy.lastSwap).to.be.equal(0);
-    expect(strategy.amount).to.be.equal(usdcAmount);
-    expect(strategy.frequency).to.be.equal(frequency);
+  it("getFactory: Should return the ChamberFactory address", async () => {
+    const factory = await chamber.getFactory();
+    expect(factory).to.be.equal(chamberFactory.address);
   });
 });

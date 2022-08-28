@@ -72,6 +72,7 @@ contract Chamber is IChamber, Initializable {
 
     function setOperator(address _operator) external onlyOwner {
         operator = _operator;
+        emit NewOperator(_operator);
     }
 
     function deposit(address _asset, uint256 _amount) external override {
@@ -185,9 +186,9 @@ contract Chamber is IChamber, Initializable {
         return idx;
     }
 
-    function updateStrategy(Strategy memory strategy) external onlyOwner {
-        strategies[strategy.hashId] = strategy;
-        emit UpdateStrategy(strategy.hashId);
+    function updateStrategy(Strategy memory _strategy) external onlyOwner {
+        strategies[_strategy.hashId] = _strategy;
+        emit UpdateStrategy(_strategy.hashId);
     }
 
     function deprecateStrategy(bytes32 _hash) external override onlyOwner {
@@ -227,6 +228,8 @@ contract Chamber is IChamber, Initializable {
 
         strategy.lastSwap = block.timestamp;
         strategies[_hashId] = strategy;
+
+        emit ExecuteStrategy(_hashId);
     }
 
     function executeSwap(
