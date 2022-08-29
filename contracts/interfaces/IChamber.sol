@@ -46,7 +46,7 @@ interface IChamber {
 
     event ExecuteStrategy(bytes32 indexed hashId);
     event UpdateStrategy(bytes32 indexed hashId);
-    event TerminateStrategy(bytes32 indexed hashId);
+    event DeprecateStrategy(bytes32 indexed hashId);
     event NewOperator(address indexed operator);
 
     function setChamberStatus(Status status) external;
@@ -74,6 +74,8 @@ interface IChamber {
     function getStatus() external view returns (Status);
 
     function getStrategies() external view returns (Strategy[] memory);
+
+    function getActiveStrategies() external view returns (uint256);
 
     function getStrategy(bytes32 hash) external view returns (Strategy memory);
 

@@ -76,11 +76,11 @@ const inspectForEvent = (target, events) => {
 };
 
 module.exports = {
+  WHALE,
+  USDT_WHALE,
+  TOKEN_DETAILS,
   getHash,
   tokenFixture,
   inspectForEvent,
   chamberFactoryFixture,
-  TOKEN_DETAILS,
-  WHALE,
-  USDT_WHALE,
 };

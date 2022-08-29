@@ -192,10 +192,9 @@ contract Chamber is IChamber, Initializable {
     }
 
     function deprecateStrategy(bytes32 _hash) external override onlyOwner {
-        Strategy storage strategy = strategies[_hash];
-        strategy.status = StrategyStatus.DEACTIVATED;
+        strategies[_hash].status = StrategyStatus.DEACTIVATED;
         activeStrategies--;
-        emit TerminateStrategy(_hash);
+        emit DeprecateStrategy(_hash);
     }
 
     function executeStrategy(

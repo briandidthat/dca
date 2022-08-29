@@ -243,6 +243,8 @@ describe("Chamber", () => {
     expect(inspectForEvent("NewStrategy", logs.events)).to.be.equal(true);
   });
 
+  // ========================= UPDATE STRATEGY =============================
+
   it("updateStrategy: Should update the strategy at the given hash if found", async () => {
     const frequency = 1;
     await chamber.connect(user).deposit(usdc.address, usdcAmount);
@@ -278,6 +280,27 @@ describe("Chamber", () => {
     expect(updatedStrategy.amount).to.be.equal(updatedAmount);
     expect(updatedStrategy.frequency).to.be.equal(updatedFrequency);
     expect(inspectForEvent("UpdateStrategy", events)).to.be.equal(true);
+  });
+
+  // ========================= DEPRECATE STRATEGY =============================
+
+  it("deprecateStrategy: Should deprecate the strategy at the given hash if found", async () => {
+    await chamber.connect(user).deposit(usdc.address, usdcAmount);
+    await chamber
+      .connect(user)
+      .createStrategy(weth.address, usdc.address, usdcAmount, 1);
+
+    const hash = getHash(user.address, weth.address, usdc.address);
+    let tx = await chamber.connect(user).deprecateStrategy(hash);
+    tx = await tx.wait();
+
+    const events = tx.events;
+    const deprecatedStrategy = await chamber.connect(user).getStrategy(hash);
+    const activeStrategies = await chamber.getActiveStrategies();
+
+    expect(deprecatedStrategy.status).to.be.equal(0); // 0 == DEACTIVATED
+    expect(activeStrategies).to.be.equal(0); // should be 0 active strats
+    expect(inspectForEvent("DeprecateStrategy", events)).to.be.equal(true);
   });
 
   // ========================= EXECUTE STRATEGY =============================
