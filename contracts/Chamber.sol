@@ -203,7 +203,7 @@ contract Chamber is IChamber, Initializable {
         address payable _swapTarget,
         bytes calldata _swapCallData
     ) external onlyAuthorized isActive {
-        Strategy storage strategy = strategies[_hashId];
+        Strategy memory strategy = strategies[_hashId];
 
         require(
             balances[strategy.sellToken] >= strategy.amount,
