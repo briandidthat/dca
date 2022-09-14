@@ -14,10 +14,10 @@ describe("Chamber", () => {
   let chamber, chamberFactory;
   let weth, cEth, dai, usdc;
 
-  const ethAmount = 5n * 10n ** 18n; // 5 ETH
+  const ethAmount = ethers.utils.parseEther("5"); // 5 ETH
   const daiAmount = 100n * 10n ** 18n; // 100 DAI
   const usdcAmount = 100n * 10n ** 6n; // 100 USDC
-  const chamberFee = ethers.BigNumber.from(web3.utils.toWei("0.05", "ether"));
+  const chamberFee = ethers.utils.parseEther("0.05"); // 0.5 ETH
 
   beforeEach(async () => {
     [user, operator, attacker, ...accounts] = await ethers.getSigners();
@@ -76,7 +76,7 @@ describe("Chamber", () => {
   // ========================= DEPOSIT ETH =============================
 
   it("depositETH: Should deposit ETH into chamber and update balance", async () => {
-    await user.sendTransaction({ to: chamber.address, value: ethAmount });
+    await chamber.connect(user).depositETH({ value: ethAmount });
     let balance = await ethers.provider.getBalance(chamber.address);
 
     expect(balance).to.be.equal(ethAmount);
@@ -165,6 +165,31 @@ describe("Chamber", () => {
     let balanceAfter = await ethers.provider.getBalance(chamber.address);
 
     expect(balanceAfter).to.be.gt(balanceBefore);
+  });
+
+  // ========================= WRAP ETH =============================
+  it("wrapETH: Should wrap ETH and update WETH Balance", async () => {
+    await chamber.connect(user).depositETH({ value: ethAmount });
+    await chamber.connect(user).wrapETH(ethAmount);
+
+    const wethBalance = await weth.balanceOf(chamber.address);
+    const ethBalance = await ethers.provider.getBalance(chamber.address);
+
+    expect(wethBalance).to.be.equal(ethAmount);
+    expect(ethBalance).to.be.equal(0);
+  });
+
+  // ========================= UNWRAP ETH =============================
+  it("unwrapETH: Should unwrap ETH and update WETH Balance", async () => {
+    await chamber.connect(user).depositETH({ value: ethAmount });
+    await chamber.connect(user).wrapETH(ethAmount);
+    await chamber.connect(user).unwrapETH(ethAmount);
+
+    const wethBalance = await weth.balanceOf(chamber.address);
+    const ethBalance = await ethers.provider.getBalance(chamber.address);
+
+    expect(wethBalance).to.be.equal(0);
+    expect(ethBalance).to.be.equal(ethAmount);
   });
 
   // ========================= EXECUTE SWAP =============================
@@ -266,6 +291,7 @@ describe("Chamber", () => {
       frequency: updatedFrequency,
       amount: updatedAmount,
       timestamp: strategy.timestamp,
+      swapCount: strategy.swapCount,
       lastSwap: strategy.lastSwap,
       status: strategy.status,
     });
@@ -330,6 +356,7 @@ describe("Chamber", () => {
 
     expect(balance).to.be.gt(0);
     expect(strategy.lastSwap).to.be.gt(0);
+    expect(strategy.swapCount).to.be.eq(1);
     expect(inspectForEvent("ExecuteSwap", events)).to.be.equal(true);
     expect(inspectForEvent("ExecuteStrategy", events)).to.be.equal(true);
   });

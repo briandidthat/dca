@@ -6,8 +6,8 @@ describe("ChamberFactory", () => {
   let accounts, dev;
   let chamber, chamberFactory;
 
-  const chamberFee = ethers.BigNumber.from(web3.utils.toWei("0.05", "ether"));
-  const ethAmount = 5n * 10n ** 18n; // 5 ETH
+  const ethAmount = ethers.utils.parseEther("5"); // 5 ETH
+  const chamberFee = ethers.utils.parseEther("0.05"); // 0.5 ETH
 
   beforeEach(async () => {
     [dev, user, ...accounts] = await ethers.getSigners();

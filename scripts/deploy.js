@@ -1,9 +1,9 @@
 const { assert } = require("chai");
 const { ethers } = require("hardhat");
-const hre = require("hardhat");
+const axios = require("axios");
 
 async function main() {
-  const [dev, user] = await hre.ethers.getSigners();
+  const [dev, user] = await ethers.getSigners();
 
   const Library = await ethers.getContractFactory("TokenLibrary");
   const library = await Library.deploy();
@@ -26,7 +26,7 @@ async function main() {
   assert(owner === dev.address);
 
   let chamberDeployment = await chamberFactory.connect(user).deployChamber({
-    value: hre.ethers.utils.parseEther("0.05"),
+    value: ethers.utils.parseEther("0.05"),
   });
 
   chamberDeployment = await chamberDeployment.wait();
@@ -34,10 +34,47 @@ async function main() {
 
   console.log("Chamber deployed. Address: " + chamberAddr);
 
-  const chamber = await hre.ethers.getContractAt("Chamber", chamberAddr);
+  const chamber = await ethers.getContractAt("Chamber", chamberAddr);
 
   const chamberOwner = await chamber.getOwner();
   assert(chamberOwner === user.address);
+
+  const status = await chamber.getStatus();
+  console.log("Chamber status: " + status);
+
+  console.log("Depositing 1 ETH to chamber");
+  await chamber
+    .connect(user)
+    .depositETH({ value: ethers.utils.parseEther("1") });
+
+  const balance = await ethers.provider.getBalance(chamber.address);
+  console.log("Chamber Balance after deposit: " + balance);
+
+  const wethAmount = ethers.utils.parseEther("0.5");
+
+  const ETH_ADDRESS = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
+
+  console.log(`WETH balance: ${wethBalance}`);
+
+  const response = await axios.get(
+    `https://api.0x.org/swap/v1/quote?sellToken=ETH&buyToken=DAI&sellAmount=${wethAmount.toString()}`
+  );
+
+  const quote = response.data;
+
+  console.log(quote);
+  // const swap = await chamber
+  //   .connect(user)
+  //   .executeSwap(
+  //     quote.sellTokenAddress,
+  //     quote.buyTokenAddress,
+  //     wethAmount,
+  //     quote.allowanceTarget,
+  //     quote.to,
+  //     quote.data
+  //   );
+
+  console.log(await swap.wait());
 }
 
 main().catch((error) => {

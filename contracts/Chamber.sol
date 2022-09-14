@@ -16,7 +16,7 @@ contract Chamber is IChamber, Initializable {
     Status private status;
     uint256 private activeStrategies;
     mapping(address => uint256) private balances;
-    mapping(bytes32 => Strategy) private strategies;
+    mapping(bytes32 => Strategy) private strategies; 
     Strategy[] private strategyList;
 
     ICETH public constant cETH =
@@ -66,8 +66,8 @@ contract Chamber is IChamber, Initializable {
         operator = _operator;
     }
 
-    function setChamberStatus(Status _status) external onlyOwner {
-        status = _status;
+    function setChamberStatus(uint8 _status) external onlyOwner {
+        status = Status(_status);
     }
 
     function setOperator(address _operator) external onlyOwner {
@@ -89,6 +89,10 @@ contract Chamber is IChamber, Initializable {
         balances[_asset] += _amount;
 
         emit Deposit(_asset, _amount);
+    }
+
+    function depositETH() external payable {
+        emit Deposit(address(0), msg.value);
     }
 
     function withdraw(address _asset, uint256 _amount)
@@ -115,8 +119,8 @@ contract Chamber is IChamber, Initializable {
     {
         require(address(this).balance >= _amount, "Insufficient balance");
 
-        (bool success, ) = owner.call{value: _amount}("");
-        require(success, "Failed to transfer ETH");
+        (bool success, bytes memory data) = owner.call{value: _amount}("");
+        require(success, TokenLibrary.getRevertMsg(data));
 
         emit Withdraw(address(0), _amount);
 
@@ -171,6 +175,7 @@ contract Chamber is IChamber, Initializable {
             buyToken: _buyToken,
             sellToken: _sellToken,
             amount: _amount,
+            swapCount: 0,
             lastSwap: 0,
             timestamp: block.timestamp,
             frequency: _frequency,
@@ -192,7 +197,8 @@ contract Chamber is IChamber, Initializable {
     }
 
     function deprecateStrategy(bytes32 _hash) external override onlyOwner {
-        strategies[_hash].status = StrategyStatus.DEACTIVATED;
+        Strategy storage strategy = strategies[_hash];
+        strategy.status = StrategyStatus.DEACTIVATED;
         activeStrategies--;
         emit DeprecateStrategy(_hash);
     }
@@ -226,6 +232,7 @@ contract Chamber is IChamber, Initializable {
         require(success, "Failed to execute strategy");
 
         strategy.lastSwap = block.timestamp;
+        strategy.swapCount += 1;
         strategies[_hashId] = strategy;
 
         emit ExecuteStrategy(_hashId);
@@ -278,6 +285,16 @@ contract Chamber is IChamber, Initializable {
         return true;
     }
 
+    function wrapETH(uint256 _amount) external onlyAuthorized {
+        WETH.deposit{value: _amount}();
+        balances[address(WETH)] = WETH.balanceOf(address(this));
+    }
+
+    function unwrapETH(uint256 _amount) external onlyAuthorized {
+        WETH.withdraw(_amount);
+        balances[address(WETH)] = WETH.balanceOf(address(this));
+    }
+
     function getOwner() external view returns (address) {
         return owner;
     }
@@ -319,6 +336,9 @@ contract Chamber is IChamber, Initializable {
         override
         returns (uint256)
     {
+        if (_asset == TokenLibrary.ETH) {
+            return address(this).balance;
+        }
         return balances[_asset];
     }
 }
