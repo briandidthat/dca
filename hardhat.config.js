@@ -26,6 +26,11 @@ module.exports = {
   },
   solidity: "0.8.15",
   networks: {
+    localhost: {
+      url: "http://127.0.0.1:8545",
+      gas: 2100000,
+      gasPrice: 8365186212,
+    },
     hardhat: {
       forking: {
         url: process.env.ALCHEMY_URL,

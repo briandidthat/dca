@@ -23,6 +23,7 @@ interface IChamber {
         uint16 frequency;
         uint256 amount;
         uint256 timestamp;
+        uint256 swapCount;
         uint256 lastSwap;
         StrategyStatus status;
     }
@@ -49,7 +50,7 @@ interface IChamber {
     event DeprecateStrategy(bytes32 indexed hashId);
     event NewOperator(address indexed operator);
 
-    function setChamberStatus(Status status) external;
+    function setChamberStatus(uint8) external;
 
     function setOperator(address) external;
 
@@ -58,6 +59,12 @@ interface IChamber {
     function redeemETH(uint256 amount) external;
 
     function deposit(address asset, uint256 amount) external;
+
+    function depositETH() external payable;
+
+    function wrapETH(uint256 amount) external;
+
+    function unwrapETH(uint256 amount) external;
 
     function withdraw(address asset, uint256 amount) external;
 

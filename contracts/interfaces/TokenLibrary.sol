@@ -6,6 +6,7 @@ library TokenLibrary {
     address public constant cUSDC = 0x39AA39c021dfbaE8faC545936693aC917d5E7563;
     address public constant cETH = 0x4Ddc2D193948926D02f9B1fE9e1daa0718270ED5;
 
+    address public constant ETH = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
     address public constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
     address public constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     address public constant USDT = 0xdAC17F958D2ee523a2206206994597C13D831ec7;
