@@ -3,7 +3,7 @@ const { ethers } = require("hardhat");
 const { chamberFactoryFixture } = require("./utils");
 
 describe("ChamberFactory", () => {
-  let accounts, dev;
+  let accounts, user, dev;
   let chamber, chamberFactory;
 
   const ethAmount = ethers.utils.parseEther("5"); // 5 ETH
@@ -24,7 +24,7 @@ describe("ChamberFactory", () => {
       receipt.events[1].args.instance
     );
   });
-  // ========================= DEPLOY =============================
+  // ========================= OWNER =============================
 
   it("deploy: Owner - Should deploy chamber with user as owner", async () => {
     const owner = await chamber.getOwner();
@@ -39,17 +39,22 @@ describe("ChamberFactory", () => {
     ).to.emit(chamberFactory, "NewChamber");
   });
 
-  it("deployChamber: Should return the users existing chamber", async () => {
-    let tx = await chamberFactory
-      .connect(user)
-      .deployChamber({ value: chamberFee });
-    let logs = await tx.wait();
-    const existing = logs.events[0].args.instance;
-    expect(existing).to.be.equal(chamber.address);
+  it("deployChamber: Revert - Should revert on attempt to deploy a 6th chamber", async () => {
+    await chamberFactory.connect(user).deployChamber({ value: chamberFee }); // 2
+    await chamberFactory.connect(user).deployChamber({ value: chamberFee }); // 3
+    await chamberFactory.connect(user).deployChamber({ value: chamberFee }); // 4
+    await chamberFactory.connect(user).deployChamber({ value: chamberFee }); // 5
+    
+    const chambers = await chamberFactory.getChambers(user.address);
+    
+    expect(chambers.length).to.be.equal(5);
+    await expect(
+      chamberFactory.connect(user).deployChamber({ value: chamberFee })
+    ).to.be.revertedWith("You have reached max chamber amount");
   });
 
   // ========================= SET FEE =============================
-  
+
   it("setFee: Should set new chamber deployment fee", async () => {
     await chamberFactory.connect(dev).setFee(ethAmount);
     let fee = await chamberFactory.getFee();
@@ -64,16 +69,17 @@ describe("ChamberFactory", () => {
     expect(fee).to.be.equal(ethAmount);
   });
 
-  // ========================= GET CHAMBER =============================
+  // ========================= GET CHAMBERS =============================
 
   it("getChamber: Should return the correct chamber by user", async () => {
-    const details = await chamberFactory.getChamber(user.address);
-    expect(details.owner).to.equal(user.address);
-    expect(details.instance).to.equal(chamber.address);
+    const details = await chamberFactory.getChambers(user.address);
+    expect(details.length).to.equal(1);
+    expect(details[0].owner).to.be.equal(user.address);
+    expect(details[0].instance).to.equal(chamber.address);
   });
 
   it("getChamber: Revert - Should revert due to no existing chamber for owner", async () => {
-    await expect(chamberFactory.getChamber(dev.address)).to.be.revertedWith(
+    await expect(chamberFactory.getChambers(dev.address)).to.be.revertedWith(
       "No chamber for that address"
     );
   });
