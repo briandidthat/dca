@@ -13,7 +13,7 @@ contract ChamberFactory is Ownable {
     address public implementation;
     uint256 private instances;
     uint256 private fee = 0.05 ether;
-    mapping(address => ChamberDetails) private chambers;
+    mapping(address => ChamberDetails[]) private chambers;
     mapping(address => bool) private hasChamber;
 
     event FactoryLogger(address indexed instance, bytes32 data);
@@ -39,9 +39,10 @@ contract ChamberFactory is Ownable {
         require(msg.value >= fee, "Must pay fee to deploy chamber");
 
         if (hasChamber[msg.sender]) {
-            address existing = chambers[msg.sender].instance;
-            emit FactoryLogger(existing, "User already has a chamber");
-            return existing;
+            require(
+                chambers[msg.sender].length < 5,
+                "You have reached max chamber amount"
+            );
         }
 
         address clone = Clones.clone(implementation);
@@ -61,16 +62,16 @@ contract ChamberFactory is Ownable {
 
         instances++;
         hasChamber[msg.sender] = true;
-        chambers[msg.sender] = chamber;
+        chambers[msg.sender].push(chamber);
 
         emit FactoryLogger(address(this), "State has been updated");
         instance = clone;
     }
 
-    function getChamber(address _beneficiary)
+    function getChambers(address _beneficiary)
         external
         view
-        returns (ChamberDetails memory chamber)
+        returns (ChamberDetails[] memory)
     {
         require(hasChamber[_beneficiary], "No chamber for that address");
         return chambers[_beneficiary];
