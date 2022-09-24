@@ -7,9 +7,6 @@ const DAI = "0x6b175474e89094c44da98b954eedeac495271d0f";
 const USDC = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48";
 const USDT = "0xdac17f958d2ee523a2206206994597c13d831ec7";
 const WETH = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2";
-const cDAI = "0x5d3a536E4D6DbD6114cc1Ead35777bAB948E3643";
-const cUSDC = "0x39AA39c021dfbaE8faC545936693aC917d5E7563";
-const cETH = "0x4Ddc2D193948926D02f9B1fE9e1daa0718270ED5";
 
 const TOKEN_DETAILS = {
   networks: {
@@ -17,15 +14,12 @@ const TOKEN_DETAILS = {
       DAI,
       USDC,
       WETH,
-      cDAI,
-      cUSDC,
-      cETH,
     },
   },
 };
 
-const tokenLibraryFixture = async () => {
-  const Library = await ethers.getContractFactory("TokenLibrary");
+const chamberLibraryFixture = async () => {
+  const Library = await ethers.getContractFactory("ChamberLibrary");
   const library = await Library.deploy();
   await library.deployed();
 
@@ -38,18 +32,14 @@ const tokenFixture = async () => {
   const usdc = await ethers.getContractAt("IERC20", USDC);
   const usdt = await ethers.getContractAt("IERC20", USDT);
 
-  const cDai = await ethers.getContractAt("ICERC20", cDAI);
-  const cEth = await ethers.getContractAt("ICETH", cETH);
-  const cUsdc = await ethers.getContractAt("ICERC20", cUSDC);
-
-  return { dai, weth, usdc, usdt, cDai, cEth, cUsdc };
+  return { dai, weth, usdc, usdt };
 };
 
 const chamberFactoryFixture = async () => {
-  const library = await tokenLibraryFixture();
+  const library = await chamberLibraryFixture();
   const ChamberFactory = await ethers.getContractFactory("ChamberFactory", {
     libraries: {
-      TokenLibrary: library.address,
+      ChamberLibrary: library.address,
     },
   });
 

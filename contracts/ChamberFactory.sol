@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import "./Chamber.sol";
 import "./interfaces/IChamber.sol";
-import "./interfaces/TokenLibrary.sol";
+import "./interfaces/ChamberLibrary.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/proxy/Clones.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -13,6 +13,7 @@ contract ChamberFactory is Ownable {
     address public implementation;
     uint256 private instances;
     uint256 private fee = 0.05 ether;
+    address[] private deployers;
     mapping(address => ChamberDetails[]) private chambers;
     mapping(address => bool) private hasChamber;
 
@@ -37,8 +38,9 @@ contract ChamberFactory is Ownable {
 
     function deployChamber() external payable returns (address instance) {
         require(msg.value >= fee, "Must pay fee to deploy chamber");
+        bool ownsChamber = hasChamber[msg.sender];
 
-        if (hasChamber[msg.sender]) {
+        if (ownsChamber) {
             require(
                 chambers[msg.sender].length < 5,
                 "You have reached max chamber amount"
@@ -52,7 +54,7 @@ contract ChamberFactory is Ownable {
         // send fees back to owner
         (bool success, bytes memory data) = owner().call{value: msg.value}("");
 
-        require(success, TokenLibrary.getRevertMsg(data));
+        require(success, ChamberLibrary.getRevertMsg(data));
 
         ChamberDetails memory chamber = ChamberDetails({
             instance: clone,
@@ -61,7 +63,11 @@ contract ChamberFactory is Ownable {
         });
 
         instances++;
-        hasChamber[msg.sender] = true;
+        if (!ownsChamber) {
+            hasChamber[msg.sender] = true;
+            deployers.push(msg.sender);
+        }
+
         chambers[msg.sender].push(chamber);
 
         emit FactoryLogger(address(this), "State has been updated");
