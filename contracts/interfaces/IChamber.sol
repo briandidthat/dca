@@ -9,14 +9,13 @@ interface IChamber {
         FROZEN,
         DEPRECATED
     }
+
     enum StrategyStatus {
-        DEACTIVATED,
-        TAKE,
-        COMPOUND
+        ACTIVE,
+        DEPRECATED
     }
 
     struct Strategy {
-        uint256 idx;
         bytes32 hashId;
         address buyToken;
         address sellToken;
@@ -53,10 +52,6 @@ interface IChamber {
     function setChamberStatus(uint8) external;
 
     function setOperator(address) external;
-
-    function supplyETH(uint256 amount) external;
-
-    function redeemETH(uint256 amount) external;
 
     function deposit(address asset, uint256 amount) external;
 

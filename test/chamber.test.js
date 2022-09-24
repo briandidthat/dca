@@ -1,6 +1,6 @@
 const axios = require("axios");
 const { expect } = require("chai");
-const { ethers, network, web3 } = require("hardhat");
+const { ethers, network } = require("hardhat");
 const {
   WHALE,
   getHash,
@@ -14,9 +14,9 @@ describe("Chamber", () => {
   let chamber, chamberFactory;
   let weth, cEth, dai, usdc;
 
-  const ethAmount = ethers.utils.parseEther("5"); // 5 ETH
-  const daiAmount = 100n * 10n ** 18n; // 100 DAI
   const usdcAmount = 100n * 10n ** 6n; // 100 USDC
+  const ethAmount = ethers.utils.parseEther("5"); // 5 ETH
+  const daiAmount = ethers.utils.parseEther("100"); // 100 DAI
   const chamberFee = ethers.utils.parseEther("0.05"); // 0.5 ETH
 
   beforeEach(async () => {
@@ -102,6 +102,15 @@ describe("Chamber", () => {
     expect(balance).to.be.equal(0);
   });
 
+  // ========================= WITHDRAW ERC20 REVERT =============================
+
+  it("withdraw: Should revert due to caller not being owner", async () => {
+    await chamber.connect(user).deposit(usdc.address, usdcAmount);
+    await expect(
+      chamber.connect(attacker).withdraw(usdc.address, usdcAmount)
+    ).to.be.revertedWith("Restricted to Owner");
+  });
+
   // ========================= WITHDRAW ETH =============================
 
   it("withdrawETH: Should withdraw ETH from chamber", async () => {
@@ -122,15 +131,6 @@ describe("Chamber", () => {
     expect(userBalanceAfter).to.be.gt(userBalanceBefore);
   });
 
-  // ========================= WITHDRAW ERC20 REVERT =============================
-
-  it("withdraw: Should revert due to caller not being owner", async () => {
-    await chamber.connect(user).deposit(usdc.address, usdcAmount);
-    await expect(
-      chamber.connect(attacker).withdraw(usdc.address, usdcAmount)
-    ).to.be.revertedWith("Restricted to Owner");
-  });
-
   // ========================= WITHDRAW ETH REVERT =============================
 
   it("withdrawETH: Should revert due to caller not being owner", async () => {
@@ -139,32 +139,6 @@ describe("Chamber", () => {
     await expect(
       chamber.connect(attacker).withdrawETH(ethAmount)
     ).to.be.revertedWith("Restricted to Owner");
-  });
-  // ========================= SUPPLY ETH =============================
-
-  it("supplyETH: Should supply ETH on compound", async () => {
-    await user.sendTransaction({ to: chamber.address, value: ethAmount });
-    await chamber.connect(user).supplyETH(ethAmount);
-
-    let cEthBalance = await cEth.balanceOf(chamber.address);
-
-    expect(cEthBalance).to.be.gt(0);
-  });
-
-  // ========================= REDEEM ETH =============================
-
-  it("redeemETH: Should redeem ETH from compound", async () => {
-    await user.sendTransaction({ to: chamber.address, value: ethAmount });
-    await chamber.connect(user).supplyETH(ethAmount);
-
-    let cEthBalance = await cEth.balanceOf(chamber.address);
-    let balanceBefore = await ethers.provider.getBalance(chamber.address);
-
-    await chamber.connect(user).redeemETH(cEthBalance);
-
-    let balanceAfter = await ethers.provider.getBalance(chamber.address);
-
-    expect(balanceAfter).to.be.gt(balanceBefore);
   });
 
   // ========================= WRAP ETH =============================
@@ -324,7 +298,7 @@ describe("Chamber", () => {
     const deprecatedStrategy = await chamber.connect(user).getStrategy(hash);
     const activeStrategies = await chamber.getActiveStrategies();
 
-    expect(deprecatedStrategy.status).to.be.equal(0); // 0 == DEACTIVATED
+    expect(deprecatedStrategy.status).to.be.equal(1); // 1 == DEACTIVATED
     expect(activeStrategies).to.be.equal(0); // should be 0 active strats
     expect(inspectForEvent("DeprecateStrategy", events)).to.be.equal(true);
   });
@@ -465,7 +439,6 @@ describe("Chamber", () => {
     const strategy = strategies[0];
 
     expect(strategies.length).to.be.equal(2);
-    expect(strategy.idx).to.be.equal(0);
     expect(strategy.amount).to.be.equal(daiAmount);
     expect(strategy.frequency).to.be.equal(frequency);
   });

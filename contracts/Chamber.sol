@@ -2,10 +2,8 @@
 pragma solidity ^0.8.0;
 
 import "./interfaces/IWETH.sol";
-import "./interfaces/ICETH.sol";
-import "./interfaces/ICERC20.sol";
 import "./interfaces/IChamber.sol";
-import "./interfaces/TokenLibrary.sol";
+import "./interfaces/ChamberLibrary.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 
@@ -16,11 +14,8 @@ contract Chamber is IChamber, Initializable {
     Status private status;
     uint256 private activeStrategies;
     mapping(address => uint256) private balances;
-    mapping(bytes32 => Strategy) private strategies; 
+    mapping(bytes32 => Strategy) private strategies;
     Strategy[] private strategyList;
-
-    ICETH public constant cETH =
-        ICETH(0x4Ddc2D193948926D02f9B1fE9e1daa0718270ED5);
 
     IWETH public constant WETH =
         IWETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
@@ -120,29 +115,11 @@ contract Chamber is IChamber, Initializable {
         require(address(this).balance >= _amount, "Insufficient balance");
 
         (bool success, bytes memory data) = owner.call{value: _amount}("");
-        require(success, TokenLibrary.getRevertMsg(data));
+        require(success, ChamberLibrary.getRevertMsg(data));
 
         emit Withdraw(address(0), _amount);
 
         return true;
-    }
-
-    function supplyETH(uint256 _amount) external override {
-        require(address(this).balance >= _amount, "Please deposit ether");
-        cETH.mint{value: _amount}();
-
-        emit Supply(address(0), _amount);
-    }
-
-    function redeemETH(uint256 _amount) external override onlyOwner {
-        require(
-            cETH.balanceOf(address(this)) >= _amount,
-            "Insufficient balance"
-        );
-
-        require(cETH.redeem(_amount) == 0, "Failed to Redeem");
-
-        emit Redeem(address(cETH), _amount);
     }
 
     function createStrategy(
@@ -160,7 +137,6 @@ contract Chamber is IChamber, Initializable {
             "Insufficient funds for Strategy"
         );
 
-        uint256 idx = strategyList.length;
         bytes32 hashed = keccak256(
             abi.encodePacked(owner, _buyToken, _sellToken)
         );
@@ -170,7 +146,6 @@ contract Chamber is IChamber, Initializable {
         }
 
         Strategy memory strategy = Strategy({
-            idx: idx,
             hashId: hashed,
             buyToken: _buyToken,
             sellToken: _sellToken,
@@ -179,7 +154,7 @@ contract Chamber is IChamber, Initializable {
             lastSwap: 0,
             timestamp: block.timestamp,
             frequency: _frequency,
-            status: StrategyStatus.TAKE
+            status: StrategyStatus.ACTIVE
         });
 
         strategies[hashed] = strategy;
@@ -188,7 +163,7 @@ contract Chamber is IChamber, Initializable {
 
         emit NewStrategy(hashed, _buyToken, _sellToken, _amount, _frequency);
 
-        return idx;
+        return activeStrategies;
     }
 
     function updateStrategy(Strategy memory _strategy) external onlyOwner {
@@ -198,7 +173,7 @@ contract Chamber is IChamber, Initializable {
 
     function deprecateStrategy(bytes32 _hash) external override onlyOwner {
         Strategy storage strategy = strategies[_hash];
-        strategy.status = StrategyStatus.DEACTIVATED;
+        strategy.status = StrategyStatus.DEPRECATED;
         activeStrategies--;
         emit DeprecateStrategy(_hash);
     }
@@ -276,7 +251,7 @@ contract Chamber is IChamber, Initializable {
             _swapCallData
         );
 
-        require(success, TokenLibrary.getRevertMsg(data));
+        require(success, ChamberLibrary.getRevertMsg(data));
 
         balances[_buyToken] = IERC20(_buyToken).balanceOf(address(this));
         balances[_sellToken] -= _amount;
@@ -286,11 +261,13 @@ contract Chamber is IChamber, Initializable {
     }
 
     function wrapETH(uint256 _amount) external onlyAuthorized {
+        require(address(this).balance >= _amount);
         WETH.deposit{value: _amount}();
         balances[address(WETH)] = WETH.balanceOf(address(this));
     }
 
     function unwrapETH(uint256 _amount) external onlyAuthorized {
+        require(balances[address(WETH)] >= _amount);
         WETH.withdraw(_amount);
         balances[address(WETH)] = WETH.balanceOf(address(this));
     }
@@ -336,7 +313,7 @@ contract Chamber is IChamber, Initializable {
         override
         returns (uint256)
     {
-        if (_asset == TokenLibrary.ETH) {
+        if (_asset == ChamberLibrary.ETH) {
             return address(this).balance;
         }
         return balances[_asset];
