@@ -5,15 +5,15 @@ const axios = require("axios");
 async function main() {
   const [dev, user] = await ethers.getSigners();
 
-  const Library = await ethers.getContractFactory("TokenLibrary");
+  const Library = await ethers.getContractFactory("ChamberLibrary");
   const library = await Library.deploy();
   await library.deployed();
 
-  console.log("TokenLibrary deployed.");
+  console.log("ChamberLibrary deployed.");
 
   const ChamberFactory = await ethers.getContractFactory("ChamberFactory", {
     libraries: {
-      TokenLibrary: library.address,
+      ChamberLibrary: library.address,
     },
   });
 
@@ -52,10 +52,6 @@ async function main() {
 
   const wethAmount = ethers.utils.parseEther("0.5");
 
-  const ETH_ADDRESS = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
-
-  console.log(`WETH balance: ${wethBalance}`);
-
   const response = await axios.get(
     `https://api.0x.org/swap/v1/quote?sellToken=ETH&buyToken=DAI&sellAmount=${wethAmount.toString()}`
   );
@@ -74,7 +70,7 @@ async function main() {
   //     quote.data
   //   );
 
-  console.log(await swap.wait());
+  // console.log(await swap.wait());
 }
 
 main().catch((error) => {

@@ -10,6 +10,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract ChamberFactory is Ownable {
+    address private treasury;
     address public implementation;
     uint256 private instances;
     uint256 private fee = 0.05 ether;
@@ -20,6 +21,7 @@ contract ChamberFactory is Ownable {
     event FactoryLogger(address indexed instance, bytes32 data);
     event FeeChanged(uint256 previousFee, uint256 newFee);
     event NewChamber(address indexed instance, address indexed owner);
+    event TreasuryChange(address indexed treasury);
 
     struct ChamberDetails {
         address instance;
@@ -27,8 +29,9 @@ contract ChamberFactory is Ownable {
         uint256 timestamp;
     }
 
-    constructor() {
+    constructor(address _treasury) {
         implementation = address(new Chamber());
+        treasury = _treasury;
     }
 
     function setFee(uint256 _newFee) external onlyOwner {
@@ -51,8 +54,8 @@ contract ChamberFactory is Ownable {
         IChamber(clone).initialize(address(this), msg.sender, msg.sender);
 
         emit NewChamber(clone, msg.sender);
-        // send fees back to owner
-        (bool success, bytes memory data) = owner().call{value: msg.value}("");
+        // send fees back to treasury
+        (bool success, bytes memory data) = treasury.call{value: msg.value}("");
 
         require(success, ChamberLibrary.getRevertMsg(data));
 
@@ -74,6 +77,11 @@ contract ChamberFactory is Ownable {
         instance = clone;
     }
 
+    function setTreasury(address _newTreasury) external onlyOwner {
+        treasury = _newTreasury;
+        emit TreasuryChange(_newTreasury);
+    }
+
     function getChambers(address _beneficiary)
         external
         view
@@ -81,6 +89,10 @@ contract ChamberFactory is Ownable {
     {
         require(hasChamber[_beneficiary], "No chamber for that address");
         return chambers[_beneficiary];
+    }
+
+    function getTreasury() external view returns (address) {
+        return treasury;
     }
 
     function getFee() external view returns (uint256) {
