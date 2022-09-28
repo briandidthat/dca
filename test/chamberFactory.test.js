@@ -1,6 +1,6 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
-const { chamberFactoryFixture } = require("./utils");
+const { chamberFactoryFixture, inspectForEvent } = require("./utils");
 
 describe("ChamberFactory", () => {
   let accounts, user, dev;
@@ -44,9 +44,9 @@ describe("ChamberFactory", () => {
     await chamberFactory.connect(user).deployChamber({ value: chamberFee }); // 3
     await chamberFactory.connect(user).deployChamber({ value: chamberFee }); // 4
     await chamberFactory.connect(user).deployChamber({ value: chamberFee }); // 5
-    
+
     const chambers = await chamberFactory.getChambers(user.address);
-    
+
     expect(chambers.length).to.be.equal(5);
     await expect(
       chamberFactory.connect(user).deployChamber({ value: chamberFee })
@@ -67,6 +67,22 @@ describe("ChamberFactory", () => {
     let fee = await chamberFactory.getFee();
 
     expect(fee).to.be.equal(ethAmount);
+  });
+
+  // ========================= SET TREASURY =============================
+
+  it("setTreasury: Should set new treasury address", async () => {
+    await chamberFactory.connect(dev).setTreasury(accounts[4].address);
+    let treasury = await chamberFactory.getTreasury();
+
+    expect(treasury).to.be.equal(accounts[4].address);
+  });
+
+  it("setTreasury: EVENT - Should emit TreasuryChanges event upon change of treasury", async () => {
+    let tx = await chamberFactory.connect(dev).setTreasury(accounts[4].address);
+    let { events } = await tx.wait();
+
+    expect(inspectForEvent("TreasuryChanged", events));
   });
 
   // ========================= GET CHAMBERS =============================
