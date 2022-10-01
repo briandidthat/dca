@@ -15,7 +15,7 @@ contract Chamber is IChamber, Initializable {
     uint256 private activeStrategies;
     mapping(address => uint256) private balances;
     mapping(bytes32 => Strategy) private strategies;
-    Strategy[] private strategyList;
+    bytes32[] private strategyHashes;
 
     IWETH public constant WETH =
         IWETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
@@ -158,7 +158,7 @@ contract Chamber is IChamber, Initializable {
         });
 
         strategies[hashed] = strategy;
-        strategyList.push(strategy);
+        strategyHashes.push(hashed);
         activeStrategies++;
 
         emit NewStrategy(hashed, _buyToken, _sellToken, _amount, _frequency);
@@ -300,11 +300,29 @@ contract Chamber is IChamber, Initializable {
     }
 
     function getStrategies() external view returns (Strategy[] memory) {
-        return strategyList;
+        uint length = strategyHashes.length;
+        Strategy[] memory strats = new Strategy[](length);
+
+        for (uint i = 0; i < length; i++) {
+            strats[i] = strategies[strategyHashes[i]];
+        }
+
+        return strats;
     }
 
-    function getActiveStrategies() external view returns (uint256) {
-        return activeStrategies;
+    function getActiveStrategies() external view returns (Strategy[] memory) {
+        uint length = strategyHashes.length;
+        Strategy[] memory active = new Strategy[](activeStrategies);
+
+        uint count = 0;
+        for (uint i = 0; i < length; i++) {
+            Strategy memory strategy = strategies[strategyHashes[i]];
+            if (strategy.status == StrategyStatus.ACTIVE) {
+                active[count] = strategy;
+            }
+        }
+
+        return active;
     }
 
     function balanceOf(address _asset)
