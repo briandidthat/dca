@@ -299,7 +299,7 @@ describe("Chamber", () => {
     const activeStrategies = await chamber.getActiveStrategies();
 
     expect(deprecatedStrategy.status).to.be.equal(1); // 1 == DEACTIVATED
-    expect(activeStrategies).to.be.equal(0); // should be 0 active strats
+    expect(activeStrategies.length).to.be.equal(0); // should be 0 active strats
     expect(inspectForEvent("DeprecateStrategy", events)).to.be.equal(true);
   });
 
@@ -441,6 +441,26 @@ describe("Chamber", () => {
     expect(strategies.length).to.be.equal(2);
     expect(strategy.amount).to.be.equal(daiAmount);
     expect(strategy.frequency).to.be.equal(frequency);
+  });
+
+  // ========================= GET ACTIVE STRATEGIES =============================
+  it("getActiveStrategies: Should return a list of active strategies", async () => {
+    await chamber.connect(user).deposit(usdc.address, usdcAmount);
+    await chamber.connect(user).deposit(dai.address, daiAmount);
+
+    await chamber
+      .connect(user)
+      .createStrategy(weth.address, usdc.address, usdcAmount, 1); // 1 strategy
+    await chamber
+      .connect(user)
+      .createStrategy(weth.address, dai.address, daiAmount, 1); // 2nd strategy
+
+    const hash = getHash(user.address, weth.address, usdc.address);
+    await chamber.connect(user).deprecateStrategy(hash);
+
+    const activeStrategies = await chamber.getActiveStrategies();
+
+    expect(activeStrategies.length).to.be.equal(1); // should be 1 active strats
   });
 
   // ========================= GET OWNER =============================

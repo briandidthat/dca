@@ -77,7 +77,7 @@ interface IChamber {
 
     function getStrategies() external view returns (Strategy[] memory);
 
-    function getActiveStrategies() external view returns (uint256);
+    function getActiveStrategies() external view returns (Strategy[] memory);
 
     function getStrategy(bytes32 hash) external view returns (Strategy memory);
 
