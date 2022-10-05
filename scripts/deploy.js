@@ -25,12 +25,7 @@ async function main() {
   await dai.connect(whale).transfer(user.address, daiAmount);
   await usdc.connect(whale).transfer(user.address, usdcAmount);
 
-  const Library = await ethers.getContractFactory("ChamberLibrary");
-  const library = await Library.deploy();
-  await library.deployed();
-
-  console.log("ChamberLibrary deployed.");
-
+  console.log("Deploying ChamberFactory.");
   const chamberFactory = await chamberFactoryFixture();
   const owner = await chamberFactory.owner();
 
@@ -39,18 +34,19 @@ async function main() {
   );
   assert(owner === dev.address);
 
-  let chamberDeployment = await chamberFactory.connect(user).deployChamber({
-    value: ethers.utils.parseEther("0.05"),
-  });
+  let chamberDeployment = await chamberFactory
+    .connect(user)
+    .deployChamber({
+      value: ethers.utils.parseEther("0.05"),
+    })
+    .then((tx) => tx.wait());
 
   const treasuryAddr = await chamberFactory.getTreasury();
   console.log(`Treasury address: ${treasuryAddr}`);
 
   assert(treasuryAddr == treasury.address);
 
-  chamberDeployment = await chamberDeployment.wait();
-  const chamberAddr = chamberDeployment.events[1].args[0];
-
+  const chamberAddr = chamberDeployment.events[1].args.instance;
   const chamber = await ethers.getContractAt("Chamber", chamberAddr);
   const chamberOwner = await chamber.getOwner();
 
@@ -92,6 +88,19 @@ async function main() {
   let strategy = await chamber.getStrategy(hashId);
   assert(strategy.buyToken, weth.address);
   assert(strategy.sellToken, dai.address);
+
+  let chamber2Deployment = await chamberFactory
+    .connect(user)
+    .deployChamber({
+      value: ethers.utils.parseEther("0.05"),
+    })
+    .then((tx) => tx.wait());
+
+  const chamber2Addr = chamber2Deployment.events[1].args.instance;
+  console.log(`Chamber 2 deployed at address: ${chamber2Addr}, Owner: ${user.address}`)
+
+  const chambers = await chamberFactory.getChambers(user.address);
+  assert(chambers.length == 2);
 }
 
 main().catch((error) => {

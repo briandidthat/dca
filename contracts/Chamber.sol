@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 
 contract Chamber is IChamber, Initializable {
-    address public factory;
+    address private factory;
     address private owner;
     address private operator;
     Status private status;
