@@ -13,16 +13,14 @@ describe("ChamberFactory", () => {
     [dev, user, ...accounts] = await ethers.getSigners();
     chamberFactory = await chamberFactoryFixture();
 
-    let tx = await chamberFactory
+    let receipt = await chamberFactory
       .connect(user)
-      .deployChamber({ value: chamberFee });
-    let receipt = await tx.wait();
+      .deployChamber({ value: chamberFee })
+      .then((tx) => tx.wait());
+    let args = receipt.events[1].args;
 
     // get the chamber we just deployed using the address from logs
-    chamber = await ethers.getContractAt(
-      "IChamber",
-      receipt.events[1].args.instance
-    );
+    chamber = await ethers.getContractAt("IChamber", args.instance);
   });
   // ========================= OWNER =============================
 
@@ -96,7 +94,7 @@ describe("ChamberFactory", () => {
 
   it("getChamber: Revert - Should revert due to no existing chamber for owner", async () => {
     await expect(chamberFactory.getChambers(dev.address)).to.be.revertedWith(
-      "No chamber for that address"
+      "No chambers present for that address"
     );
   });
 

@@ -34,7 +34,8 @@ interface IChamber {
     event ExecuteSwap(
         address indexed sellToken,
         address indexed buyToken,
-        uint256 amount
+        uint256 amount,
+        bytes indexed data
     );
     event NewStrategy(
         bytes32 indexed hashId,
@@ -101,7 +102,7 @@ interface IChamber {
         address sellToken,
         uint256 amount,
         uint16 frequency
-    ) external returns (uint256);
+    ) external returns (bytes32 hashId);
 
     function updateStrategy(Strategy memory strategy) external;
 
