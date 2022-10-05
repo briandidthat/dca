@@ -29,16 +29,14 @@ describe("Chamber", () => {
     usdc = tokens.usdc;
     cEth = tokens.cEth;
 
-    let tx = await chamberFactory
+    let receipt = await chamberFactory
       .connect(user)
-      .deployChamber({ value: chamberFee });
-    let receipt = await tx.wait();
+      .deployChamber({ value: chamberFee })
+      .then((tx) => tx.wait());
 
+    let args = receipt.events[1].args;
     // get the chamber we just deployed using the address from logs
-    chamber = await ethers.getContractAt(
-      "IChamber",
-      receipt.events[1].args.instance
-    );
+    chamber = await ethers.getContractAt("IChamber", args.instance);
 
     // unlock USDC/DAI Whale account
     await network.provider.request({
@@ -351,11 +349,10 @@ describe("Chamber", () => {
 
     let tx = await chamber
       .connect(operator)
-      .executeStrategy(hash, quote.allowanceTarget, quote.to, quote.data);
+      .executeStrategy(hash, quote.allowanceTarget, quote.to, quote.data)
+      .then((tx) => tx.wait());
 
-    tx = await tx.wait();
     const events = tx.events;
-
     const strategy = await chamber.getStrategy(hash);
     const balance = await weth.balanceOf(chamber.address);
 
@@ -375,8 +372,10 @@ describe("Chamber", () => {
 
   // ========================= SET OPERATOR =============================
   it("setOperator: Should set the operator address", async () => {
-    let tx = await chamber.connect(user).setOperator(operator.address);
-    tx = await tx.wait();
+    let tx = await chamber
+      .connect(user)
+      .setOperator(operator.address)
+      .then((tx) => tx.wait());
     const events = tx.events;
 
     const operatorAddr = await chamber.getOperator();

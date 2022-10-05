@@ -11,7 +11,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract ChamberFactory is Ownable {
     address private treasury;
-    address public implementation;
+    address private implementation;
     uint256 private instances;
     uint256 private fee = 0.05 ether;
     address[] private deployers;
@@ -87,16 +87,19 @@ contract ChamberFactory is Ownable {
         view
         returns (ChamberDetails[] memory)
     {
-        require(hasChamber[_beneficiary], "No chamber for that address");
+        require(
+            hasChamber[_beneficiary],
+            "No chambers present for that address"
+        );
         return chambers[_beneficiary];
-    }
-
-    function getTreasury() external view returns (address) {
-        return treasury;
     }
 
     function getFee() external view returns (uint256) {
         return fee;
+    }
+
+    function getTreasury() external view returns (address) {
+        return treasury;
     }
 
     function getInstanceCount() external view returns (uint256) {

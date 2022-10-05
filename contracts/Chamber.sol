@@ -15,6 +15,7 @@ contract Chamber is IChamber, Initializable {
     uint256 private activeStrategies;
     mapping(address => uint256) private balances;
     mapping(bytes32 => Strategy) private strategies;
+    address[] private tokens;
     bytes32[] private strategyHashes;
 
     IWETH public constant WETH =
@@ -127,7 +128,7 @@ contract Chamber is IChamber, Initializable {
         address _sellToken,
         uint256 _amount,
         uint16 _frequency
-    ) external override onlyOwner isActive returns (uint256) {
+    ) external override onlyOwner isActive returns (bytes32) {
         require(
             (_buyToken != address(0) && _sellToken != address(0)),
             "Cannot buy or sell to Zero address"
@@ -157,13 +158,13 @@ contract Chamber is IChamber, Initializable {
             status: StrategyStatus.ACTIVE
         });
 
+        emit NewStrategy(hashed, _buyToken, _sellToken, _amount, _frequency);
+
         strategies[hashed] = strategy;
         strategyHashes.push(hashed);
         activeStrategies++;
 
-        emit NewStrategy(hashed, _buyToken, _sellToken, _amount, _frequency);
-
-        return activeStrategies;
+        return hashed;
     }
 
     function updateStrategy(Strategy memory _strategy) external onlyOwner {
@@ -253,11 +254,12 @@ contract Chamber is IChamber, Initializable {
 
         require(success, ChamberLibrary.getRevertMsg(data));
 
+        emit ExecuteSwap(_sellToken, _buyToken, _amount, data);
+
         balances[_buyToken] = IERC20(_buyToken).balanceOf(address(this));
         balances[_sellToken] -= _amount;
-        emit ExecuteSwap(_sellToken, _buyToken, _amount);
 
-        return true;
+        return success;
     }
 
     function wrapETH(uint256 _amount) external onlyAuthorized {
@@ -300,10 +302,10 @@ contract Chamber is IChamber, Initializable {
     }
 
     function getStrategies() external view returns (Strategy[] memory) {
-        uint length = strategyHashes.length;
+        uint256 length = strategyHashes.length;
         Strategy[] memory strats = new Strategy[](length);
 
-        for (uint i = 0; i < length; i++) {
+        for (uint256 i = 0; i < length; i++) {
             strats[i] = strategies[strategyHashes[i]];
         }
 
@@ -311,14 +313,15 @@ contract Chamber is IChamber, Initializable {
     }
 
     function getActiveStrategies() external view returns (Strategy[] memory) {
-        uint length = strategyHashes.length;
+        uint256 length = strategyHashes.length;
         Strategy[] memory active = new Strategy[](activeStrategies);
 
-        uint count = 0;
-        for (uint i = 0; i < length; i++) {
+        uint256 count = 0;
+        for (uint256 i = 0; i < length; i++) {
             Strategy memory strategy = strategies[strategyHashes[i]];
             if (strategy.status == StrategyStatus.ACTIVE) {
                 active[count] = strategy;
+                count++;
             }
         }
 
