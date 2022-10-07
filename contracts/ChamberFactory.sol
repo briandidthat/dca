@@ -15,6 +15,7 @@ contract ChamberFactory is Ownable {
     uint256 private instances;
     uint256 private fee = 0.05 ether;
     address[] private deployers;
+    mapping(address => ChamberOwner) chamberOwners;
     mapping(address => ChamberDetails[]) private chambers;
     mapping(address => bool) private hasChamber;
 
@@ -22,6 +23,13 @@ contract ChamberFactory is Ownable {
     event FeeChanged(uint256 previousFee, uint256 newFee);
     event NewChamber(address indexed instance, address indexed owner);
     event TreasuryChange(address indexed treasury);
+
+    struct ChamberOwner {
+        address owner;
+        bytes32 username;
+        uint8 limit;
+        uint8 count;
+    }
 
     struct ChamberDetails {
         address instance;
