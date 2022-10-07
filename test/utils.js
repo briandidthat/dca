@@ -3,6 +3,7 @@ const { ethers, web3 } = require("hardhat");
 const WHALE = "0x7a8edc710ddeadddb0b539de83f3a306a621e823";
 const USDT_WHALE = "0xa929022c9107643515f5c777ce9a910f0d1e490c";
 
+const ETH = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
 const DAI = "0x6b175474e89094c44da98b954eedeac495271d0f";
 const USDC = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48";
 const USDT = "0xdac17f958d2ee523a2206206994597c13d831ec7";
@@ -17,6 +18,12 @@ const TOKEN_DETAILS = {
     },
   },
 };
+
+function createQueryString(url, params) {
+  return url + Object.entries(params)
+    .map(([k, v]) => `${k}=${v}`)
+    .join("&");
+}
 
 const chamberLibraryFixture = async () => {
   const Library = await ethers.getContractFactory("ChamberLibrary");
@@ -37,7 +44,7 @@ const tokenFixture = async () => {
 
 const chamberFactoryFixture = async () => {
   const library = await chamberLibraryFixture();
-  const signers = await ethers.getSigners();
+  const [deployer, user, treasury, ...rest] = await ethers.getSigners();
 
   const ChamberFactory = await ethers.getContractFactory("ChamberFactory", {
     libraries: {
@@ -45,7 +52,9 @@ const chamberFactoryFixture = async () => {
     },
   });
 
-  const chamberFactory = await ChamberFactory.deploy(signers[2].address);
+  const chamberFactory = await ChamberFactory.connect(deployer).deploy(
+    treasury.address
+  );
   await chamberFactory.deployed();
 
   return chamberFactory;
@@ -73,5 +82,6 @@ module.exports = {
   getHash,
   tokenFixture,
   inspectForEvent,
+  createQueryString,
   chamberFactoryFixture,
 };

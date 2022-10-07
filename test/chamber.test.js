@@ -7,12 +7,13 @@ const {
   inspectForEvent,
   chamberFactoryFixture,
   tokenFixture,
+  createQueryString,
 } = require("./utils");
 
 describe("Chamber", () => {
   let accounts, whale, user, operator, attacker;
   let chamber, chamberFactory;
-  let weth, cEth, dai, usdc;
+  let weth, dai, usdc;
 
   const usdcAmount = 100n * 10n ** 6n; // 100 USDC
   const ethAmount = ethers.utils.parseEther("5"); // 5 ETH
@@ -168,10 +169,13 @@ describe("Chamber", () => {
 
   it("executeSwap: Should swap DAI to WETH using 0x liquidity", async () => {
     await chamber.connect(user).deposit(dai.address, daiAmount);
-    const response = await axios.get(
-      "https://api.0x.org/swap/v1/quote?sellToken=DAI&buyToken=WETH&sellAmount=100000000000000000000"
-    );
+    const url = createQueryString("https://api.0x.org/swap/v1/quote?", {
+      sellToken: "DAI",
+      buyToken: "WETH",
+      sellAmount: daiAmount.toString(),
+    });
 
+    const response = await axios.get(url);
     const quote = response.data;
 
     await dai.connect(user).approve(quote.allowanceTarget, quote.sellAmount);
@@ -196,10 +200,13 @@ describe("Chamber", () => {
 
   it("executeSwap: Should swap USDC to WETH using 0x liquidity", async () => {
     await chamber.connect(user).deposit(usdc.address, usdcAmount);
-    const response = await axios.get(
-      "https://api.0x.org/swap/v1/quote?sellToken=USDC&buyToken=WETH&sellAmount=100000000"
-    );
+    const url = createQueryString("https://api.0x.org/swap/v1/quote?", {
+      sellToken: "USDC",
+      buyToken: "WETH",
+      sellAmount: usdcAmount.toString(),
+    });
 
+    const response = await axios.get(url);
     const quote = response.data;
 
     await chamber
@@ -220,6 +227,42 @@ describe("Chamber", () => {
     expect(chamberBalance).to.be.equal(chamberWethBalance);
   });
 
+  it("executeSwap: Should swap WETH to DAI using 0x liquidity", async () => {
+    await chamber.connect(user).depositETH({ value: ethAmount });
+
+    const sellAmount = ethers.utils.parseEther("1");
+    await chamber.connect(user).wrapETH(sellAmount);
+
+    const url = createQueryString("https://api.0x.org/swap/v1/quote?", {
+      sellToken: "WETH",
+      buyToken: "DAI",
+      sellAmount: sellAmount.toString(),
+    });
+
+    const response = await axios.get(url);
+    const quote = response.data;
+
+    await chamber
+      .connect(user)
+      .executeSwap(
+        quote.sellTokenAddress,
+        quote.buyTokenAddress,
+        usdcAmount,
+        quote.allowanceTarget,
+        quote.to,
+        quote.data
+      );
+
+    const usdcBalance = await usdc.balanceOf(chamber.address);
+    const ethBalance = await ethers.provider.getBalance(chamber.address);
+
+    console.log(ethBalance);
+    console.log(usdcBalance);
+
+    expect(usdcBalance).to.be.gt(0);
+    expect(ethBalance).to.be.gt(sellAmount);
+    expect(ethBalance).to.be.lt(ethAmount);
+  });
   // ========================= CREATE STRATEGY =============================
 
   it("createStrategy: Should create a strategy and log the strategy id", async () => {
@@ -309,9 +352,12 @@ describe("Chamber", () => {
       .connect(user)
       .createStrategy(weth.address, usdc.address, usdcAmount, 7);
 
-    const response = await axios.get(
-      "https://api.0x.org/swap/v1/quote?sellToken=USDC&buyToken=WETH&sellAmount=100000000"
-    );
+    const url = createQueryString("https://api.0x.org/swap/v1/quote?", {
+      sellToken: "USDC",
+      buyToken: "WETH",
+      sellAmount: usdcAmount.toString(),
+    });
+    const response = await axios.get(url);
 
     const quote = response.data;
     const hash = getHash(user.address, weth.address, usdc.address);
@@ -340,9 +386,12 @@ describe("Chamber", () => {
       .connect(user)
       .createStrategy(weth.address, usdc.address, usdcAmount, 7);
 
-    const response = await axios.get(
-      "https://api.0x.org/swap/v1/quote?sellToken=USDC&buyToken=WETH&sellAmount=100000000"
-    );
+    const url = createQueryString("https://api.0x.org/swap/v1/quote?", {
+      sellToken: "USDC",
+      buyToken: "WETH",
+      sellAmount: usdcAmount.toString(),
+    });
+    const response = await axios.get(url);
 
     const quote = response.data;
     const hash = getHash(user.address, weth.address, usdc.address);
