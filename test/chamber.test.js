@@ -10,6 +10,8 @@ const {
   createQueryString,
 } = require("./utils");
 
+ZEROX_URL = process.env.ZEROX_URL;
+
 describe("Chamber", () => {
   let accounts, whale, user, operator, attacker;
   let chamber, chamberFactory;
@@ -169,7 +171,7 @@ describe("Chamber", () => {
 
   it("executeSwap: Should swap DAI to WETH using 0x liquidity", async () => {
     await chamber.connect(user).deposit(dai.address, daiAmount);
-    const url = createQueryString("https://api.0x.org/swap/v1/quote?", {
+    const url = createQueryString(ZEROX_URL, {
       sellToken: "DAI",
       buyToken: "WETH",
       sellAmount: daiAmount.toString(),
@@ -200,7 +202,7 @@ describe("Chamber", () => {
 
   it("executeSwap: Should swap USDC to WETH using 0x liquidity", async () => {
     await chamber.connect(user).deposit(usdc.address, usdcAmount);
-    const url = createQueryString("https://api.0x.org/swap/v1/quote?", {
+    const url = createQueryString(ZEROX_URL, {
       sellToken: "USDC",
       buyToken: "WETH",
       sellAmount: usdcAmount.toString(),
@@ -233,9 +235,9 @@ describe("Chamber", () => {
     const sellAmount = ethers.utils.parseEther("1");
     await chamber.connect(user).wrapETH(sellAmount);
 
-    const url = createQueryString("https://api.0x.org/swap/v1/quote?", {
+    const url = createQueryString(ZEROX_URL, {
       sellToken: "WETH",
-      buyToken: "DAI",
+      buyToken: "USDC",
       sellAmount: sellAmount.toString(),
     });
 
@@ -352,7 +354,7 @@ describe("Chamber", () => {
       .connect(user)
       .createStrategy(weth.address, usdc.address, usdcAmount, 7);
 
-    const url = createQueryString("https://api.0x.org/swap/v1/quote?", {
+    const url = createQueryString(ZEROX_URL, {
       sellToken: "USDC",
       buyToken: "WETH",
       sellAmount: usdcAmount.toString(),
@@ -386,7 +388,7 @@ describe("Chamber", () => {
       .connect(user)
       .createStrategy(weth.address, usdc.address, usdcAmount, 7);
 
-    const url = createQueryString("https://api.0x.org/swap/v1/quote?", {
+    const url = createQueryString(ZEROX_URL, {
       sellToken: "USDC",
       buyToken: "WETH",
       sellAmount: usdcAmount.toString(),
@@ -438,8 +440,8 @@ describe("Chamber", () => {
     await chamber.connect(user).deposit(dai.address, daiAmount);
     await chamber.connect(user).deposit(usdc.address, usdcAmount);
 
-    const daiWithdrawal = 50n * 10n ** 18n;
     const usdcWithdrawal = 50n * 10n ** 6n;
+    const daiWithdrawal = ethers.utils.parseEther("50");
 
     await chamber.connect(user).withdraw(dai.address, daiWithdrawal);
     await chamber.connect(user).withdraw(usdc.address, usdcWithdrawal);
