@@ -188,10 +188,6 @@ contract Chamber is IChamber, Initializable {
         Strategy memory strategy = strategies[_hashId];
 
         require(
-            balances[strategy.sellToken] >= strategy.amount,
-            "Insufficient Balance for strategy"
-        );
-        require(
             block.timestamp - strategy.lastSwap >= strategy.frequency,
             "Not ready to be executed"
         );
@@ -242,6 +238,10 @@ contract Chamber is IChamber, Initializable {
         address payable _swapTarget,
         bytes calldata _swapCallData
     ) internal returns (bool) {
+        require(
+            balances[_sellToken] >= _amount,
+            "Insufficient balance for swap"
+        );
         // Give `spender` an infinite allowance to spend this contract's `sellToken`
         if (IERC20(_sellToken).allowance(address(this), _spender) < _amount) {
             require(IERC20(_sellToken).approve(_spender, type(uint256).max));
@@ -257,7 +257,7 @@ contract Chamber is IChamber, Initializable {
         emit ExecuteSwap(_sellToken, _buyToken, _amount, data);
 
         balances[_buyToken] = IERC20(_buyToken).balanceOf(address(this));
-        balances[_sellToken] -= _amount;
+        balances[_sellToken] = IERC20(_sellToken).balanceOf(address(this));
 
         return success;
     }

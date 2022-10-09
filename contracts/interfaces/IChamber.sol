@@ -35,7 +35,7 @@ interface IChamber {
         address indexed sellToken,
         address indexed buyToken,
         uint256 amount,
-        bytes indexed data
+        bytes data
     );
     event NewStrategy(
         bytes32 indexed hashId,

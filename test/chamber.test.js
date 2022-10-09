@@ -8,6 +8,7 @@ const {
   chamberFactoryFixture,
   tokenFixture,
   createQueryString,
+  getEventObject,
 } = require("./utils");
 
 ZEROX_URL = process.env.ZEROX_URL;
@@ -20,7 +21,7 @@ describe("Chamber", () => {
   const usdcAmount = 100n * 10n ** 6n; // 100 USDC
   const ethAmount = ethers.utils.parseEther("5"); // 5 ETH
   const daiAmount = ethers.utils.parseEther("100"); // 100 DAI
-  const chamberFee = ethers.utils.parseEther("0.05"); // 0.5 ETH
+  const chamberFee = ethers.utils.parseEther("0.05"); // 0.05 ETH
 
   beforeEach(async () => {
     [user, operator, attacker, ...accounts] = await ethers.getSigners();
@@ -37,9 +38,9 @@ describe("Chamber", () => {
       .deployChamber({ value: chamberFee })
       .then((tx) => tx.wait());
 
-    let args = receipt.events[1].args;
+    const event = getEventObject("NewChamber", receipt.events);
     // get the chamber we just deployed using the address from logs
-    chamber = await ethers.getContractAt("IChamber", args.instance);
+    chamber = await ethers.getContractAt("IChamber", event.args.instance);
 
     // unlock USDC/DAI Whale account
     await network.provider.request({
@@ -182,7 +183,7 @@ describe("Chamber", () => {
 
     await dai.connect(user).approve(quote.allowanceTarget, quote.sellAmount);
 
-    await chamber
+    let receipt = await chamber
       .connect(user)
       .executeSwap(
         quote.sellTokenAddress,
@@ -191,13 +192,19 @@ describe("Chamber", () => {
         quote.allowanceTarget,
         quote.to,
         quote.data
-      );
+      )
+      .then((tx) => tx.wait());
+
+    const event = getEventObject("ExecuteSwap", receipt.events);
 
     const chamberWethBalance = await weth.balanceOf(chamber.address);
     const chamberBalance = await chamber.balanceOf(weth.address);
 
     expect(chamberWethBalance).to.be.gt(0);
     expect(chamberBalance).to.be.equal(chamberWethBalance);
+    expect(event.args.sellToken).to.be.equal(dai.address);
+    expect(event.args.buyToken).to.be.equal(weth.address);
+    expect(event.args.amount).to.be.equal(daiAmount);
   });
 
   it("executeSwap: Should swap USDC to WETH using 0x liquidity", async () => {
@@ -211,7 +218,7 @@ describe("Chamber", () => {
     const response = await axios.get(url);
     const quote = response.data;
 
-    await chamber
+    const receipt = await chamber
       .connect(user)
       .executeSwap(
         quote.sellTokenAddress,
@@ -220,13 +227,19 @@ describe("Chamber", () => {
         quote.allowanceTarget,
         quote.to,
         quote.data
-      );
+      )
+      .then((tx) => tx.wait());
+
+    const event = getEventObject("ExecuteSwap", receipt.events);
 
     const chamberWethBalance = await weth.balanceOf(chamber.address);
     const chamberBalance = await chamber.balanceOf(weth.address);
 
     expect(chamberWethBalance).to.be.gt(0);
     expect(chamberBalance).to.be.equal(chamberWethBalance);
+    expect(event.args.sellToken).to.be.equal(usdc.address);
+    expect(event.args.buyToken).to.be.equal(weth.address);
+    expect(event.args.amount).to.be.equal(usdcAmount);
   });
 
   it("executeSwap: Should swap WETH to DAI using 0x liquidity", async () => {
@@ -244,7 +257,7 @@ describe("Chamber", () => {
     const response = await axios.get(url);
     const quote = response.data;
 
-    await chamber
+    const receipt = await chamber
       .connect(user)
       .executeSwap(
         quote.sellTokenAddress,
@@ -253,17 +266,20 @@ describe("Chamber", () => {
         quote.allowanceTarget,
         quote.to,
         quote.data
-      );
+      )
+      .then((tx) => tx.wait());
+
+    const event = getEventObject("ExecuteSwap", receipt.events);
 
     const usdcBalance = await usdc.balanceOf(chamber.address);
     const ethBalance = await ethers.provider.getBalance(chamber.address);
 
-    console.log(ethBalance);
-    console.log(usdcBalance);
-
     expect(usdcBalance).to.be.gt(0);
     expect(ethBalance).to.be.gt(sellAmount);
     expect(ethBalance).to.be.lt(ethAmount);
+    expect(event.args.sellToken).to.be.equal(weth.address);
+    expect(event.args.buyToken).to.be.equal(usdc.address);
+    expect(event.args.amount).to.be.equal(usdcAmount);
   });
   // ========================= CREATE STRATEGY =============================
 
@@ -271,18 +287,18 @@ describe("Chamber", () => {
     await chamber.connect(user).deposit(dai.address, daiAmount);
 
     const frequency = 7;
-    let tx = await chamber
+    const receipt = await chamber
       .connect(user)
-      .createStrategy(weth.address, dai.address, daiAmount, frequency);
-    let logs = await tx.wait();
-    const values = logs.events[0].args;
+      .createStrategy(weth.address, dai.address, daiAmount, frequency)
+      .then((tx) => tx.wait());
 
+    const event = getEventObject("NewStrategy", receipt.events);
     const hash = getHash(user.address, weth.address, dai.address);
 
-    expect(values.hashId).to.be.equal(hash);
-    expect(values.amount).to.be.equal(daiAmount);
-    expect(values.frequency).to.be.equal(frequency);
-    expect(inspectForEvent("NewStrategy", logs.events)).to.be.equal(true);
+    expect(event.args.hashId).to.be.equal(hash);
+    expect(event.args.amount).to.be.equal(daiAmount);
+    expect(event.args.frequency).to.be.equal(frequency);
+    expect(event.args.hashId).to.be.equal(hash);
   });
 
   // ========================= UPDATE STRATEGY =============================
@@ -300,21 +316,23 @@ describe("Chamber", () => {
     const updatedFrequency = 10;
     const updatedAmount = usdcAmount + usdcAmount;
 
-    const tx = await chamber.connect(user).updateStrategy({
-      idx: strategy.idx,
-      hashId: strategy.hashId,
-      buyToken: strategy.buyToken,
-      sellToken: strategy.sellToken,
-      frequency: updatedFrequency,
-      amount: updatedAmount,
-      timestamp: strategy.timestamp,
-      swapCount: strategy.swapCount,
-      lastSwap: strategy.lastSwap,
-      status: strategy.status,
-    });
+    const receipt = await chamber
+      .connect(user)
+      .updateStrategy({
+        idx: strategy.idx,
+        hashId: strategy.hashId,
+        buyToken: strategy.buyToken,
+        sellToken: strategy.sellToken,
+        frequency: updatedFrequency,
+        amount: updatedAmount,
+        timestamp: strategy.timestamp,
+        swapCount: strategy.swapCount,
+        lastSwap: strategy.lastSwap,
+        status: strategy.status,
+      })
+      .then((tx) => tx.wait());
 
-    const logs = await tx.wait();
-    const events = logs.events;
+    const event = getEventObject("UpdateStrategy", receipt.events);
 
     const updatedStrategy = await chamber
       .connect(user)
@@ -322,7 +340,7 @@ describe("Chamber", () => {
 
     expect(updatedStrategy.amount).to.be.equal(updatedAmount);
     expect(updatedStrategy.frequency).to.be.equal(updatedFrequency);
-    expect(inspectForEvent("UpdateStrategy", events)).to.be.equal(true);
+    expect(event.args.hashId).to.be.equal(hash);
   });
 
   // ========================= DEPRECATE STRATEGY =============================
@@ -334,16 +352,18 @@ describe("Chamber", () => {
       .createStrategy(weth.address, usdc.address, usdcAmount, 1);
 
     const hash = getHash(user.address, weth.address, usdc.address);
-    let tx = await chamber.connect(user).deprecateStrategy(hash);
-    tx = await tx.wait();
+    const receipt = await chamber
+      .connect(user)
+      .deprecateStrategy(hash)
+      .then((tx) => tx.wait());
 
-    const events = tx.events;
+    const event = getEventObject("DeprecateStrategy", receipt.events);
     const deprecatedStrategy = await chamber.connect(user).getStrategy(hash);
     const activeStrategies = await chamber.getActiveStrategies();
 
     expect(deprecatedStrategy.status).to.be.equal(1); // 1 == DEACTIVATED
     expect(activeStrategies.length).to.be.equal(0); // should be 0 active strats
-    expect(inspectForEvent("DeprecateStrategy", events)).to.be.equal(true);
+    expect(event.args.hashId).to.be.equal(hash);
   });
 
   // ========================= EXECUTE STRATEGY =============================
@@ -364,12 +384,12 @@ describe("Chamber", () => {
     const quote = response.data;
     const hash = getHash(user.address, weth.address, usdc.address);
 
-    let tx = await chamber
+    const receipt = await chamber
       .connect(user)
-      .executeStrategy(hash, quote.allowanceTarget, quote.to, quote.data);
+      .executeStrategy(hash, quote.allowanceTarget, quote.to, quote.data)
+      .then((tx) => tx.wait());
 
-    tx = await tx.wait();
-    const events = tx.events;
+    const event = getEventObject("ExecuteStrategy", receipt.events);
 
     const strategy = await chamber.getStrategy(hash);
     const balance = await weth.balanceOf(chamber.address);
@@ -377,8 +397,7 @@ describe("Chamber", () => {
     expect(balance).to.be.gt(0);
     expect(strategy.lastSwap).to.be.gt(0);
     expect(strategy.swapCount).to.be.eq(1);
-    expect(inspectForEvent("ExecuteSwap", events)).to.be.equal(true);
-    expect(inspectForEvent("ExecuteStrategy", events)).to.be.equal(true);
+    expect(event.args.hashId).to.be.equal(hash);
   });
 
   it("executeStrategy: Should execute strategy by operator", async () => {
@@ -398,19 +417,19 @@ describe("Chamber", () => {
     const quote = response.data;
     const hash = getHash(user.address, weth.address, usdc.address);
 
-    let tx = await chamber
+    const receipt = await chamber
       .connect(operator)
       .executeStrategy(hash, quote.allowanceTarget, quote.to, quote.data)
       .then((tx) => tx.wait());
 
-    const events = tx.events;
+    const event = getEventObject("ExecuteStrategy", receipt.events);
+
     const strategy = await chamber.getStrategy(hash);
     const balance = await weth.balanceOf(chamber.address);
 
     expect(balance).to.be.gt(0);
     expect(strategy.lastSwap).to.be.gt(0);
-    expect(inspectForEvent("ExecuteSwap", events)).to.be.equal(true);
-    expect(inspectForEvent("ExecuteStrategy", events)).to.be.equal(true);
+    expect(event.args.hashId).to.be.equal(hash);
   });
 
   // ========================= SET STATUS =============================
