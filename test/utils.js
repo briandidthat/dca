@@ -1,11 +1,11 @@
 const { ethers, web3 } = require("hardhat");
 
-const WHALE = "0x7a8edc710ddeadddb0b539de83f3a306a621e823";
+const WHALE = "0xfa4fc4ec2f81a4897743c5b4f45907c02ce06199";
 const USDT_WHALE = "0xa929022c9107643515f5c777ce9a910f0d1e490c";
 
 const ETH = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
-const DAI = "0x6b175474e89094c44da98b954eedeac495271d0f";
-const USDC = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48";
+const DAI = "0x6B175474E89094C44Da98b954EedeAC495271d0F";
+const USDC = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
 const USDT = "0xdac17f958d2ee523a2206206994597c13d831ec7";
 const WETH = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2";
 
@@ -20,9 +20,12 @@ const TOKEN_DETAILS = {
 };
 
 function createQueryString(url, params) {
-  return url + Object.entries(params)
-    .map(([k, v]) => `${k}=${v}`)
-    .join("&");
+  return (
+    url +
+    Object.entries(params)
+      .map(([k, v]) => `${k}=${v}`)
+      .join("&")
+  );
 }
 
 const chamberLibraryFixture = async () => {
@@ -44,7 +47,7 @@ const tokenFixture = async () => {
 
 const chamberFactoryFixture = async () => {
   const library = await chamberLibraryFixture();
-  const [deployer, user, treasury, ...rest] = await ethers.getSigners();
+  const [deployer, user, treasury] = await ethers.getSigners();
 
   const ChamberFactory = await ethers.getContractFactory("ChamberFactory", {
     libraries: {
@@ -75,11 +78,22 @@ const inspectForEvent = (target, events) => {
   return present;
 };
 
+const getEventObject = (target, events) => {
+  let event = null;
+  events.map((item) => {
+    if (item.event === target) {
+      event = item;
+    }
+  });
+  return event;
+};
+
 module.exports = {
   WHALE,
   USDT_WHALE,
   TOKEN_DETAILS,
   getHash,
+  getEventObject,
   tokenFixture,
   inspectForEvent,
   createQueryString,
