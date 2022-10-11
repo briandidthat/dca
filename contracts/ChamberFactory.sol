@@ -63,7 +63,9 @@ contract ChamberFactory is Ownable {
 
         emit NewChamber(clone, msg.sender);
         // send fees back to treasury
-        (bool success, bytes memory data) = treasury.call{value: msg.value}("");
+        (bool success, bytes memory data) = treasury.call{value: msg.value}(
+            "chamber fees"
+        );
 
         require(success, ChamberLibrary.getRevertMsg(data));
 
@@ -112,5 +114,9 @@ contract ChamberFactory is Ownable {
 
     function getInstanceCount() external view returns (uint256) {
         return instances;
+    }
+    
+    function getUniqueDeployersCount() external view returns (uint256) {
+        return deployers.length;
     }
 }
