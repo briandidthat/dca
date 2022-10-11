@@ -1,26 +1,29 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
-const { chamberFactoryFixture, inspectForEvent } = require("./utils");
+const {
+  chamberFactoryFixture,
+  getEventObject,
+} = require("./utils");
 
 describe("ChamberFactory", () => {
-  let accounts, user, dev;
+  let dev, user, treasury, rando;
   let chamber, chamberFactory;
 
   const ethAmount = ethers.utils.parseEther("5"); // 5 ETH
   const chamberFee = ethers.utils.parseEther("0.05"); // 0.5 ETH
 
   beforeEach(async () => {
-    [dev, user, ...accounts] = await ethers.getSigners();
+    [dev, user, treasury, rando] = await ethers.getSigners();
     chamberFactory = await chamberFactoryFixture();
 
-    let receipt = await chamberFactory
+    const receipt = await chamberFactory
       .connect(user)
       .deployChamber({ value: chamberFee })
       .then((tx) => tx.wait());
-    let args = receipt.events[1].args;
+    const event = getEventObject("NewChamber", receipt.events);
 
     // get the chamber we just deployed using the address from logs
-    chamber = await ethers.getContractAt("IChamber", args.instance);
+    chamber = await ethers.getContractAt("IChamber", event.args.instance);
   });
   // ========================= OWNER =============================
 
@@ -32,9 +35,17 @@ describe("ChamberFactory", () => {
   // ========================= DEPLOY CHAMBER =============================
 
   it("deployChamber: Event - Should emit a NewChamber event on deployment", async () => {
-    await expect(
-      chamberFactory.connect(dev).deployChamber({ value: chamberFee })
-    ).to.emit(chamberFactory, "NewChamber");
+    const treasuryBalanceBefore = await ethers.provider.getBalance(treasury.address);
+    const receipt = await chamberFactory
+      .connect(user)
+      .deployChamber({ value: chamberFee })
+      .then((tx) => tx.wait());
+
+    const event = getEventObject("NewChamber", receipt.events);
+    const treasuryBalanceAfter = await ethers.provider.getBalance(treasury.address);
+
+    expect(treasuryBalanceAfter).to.be.gt(treasuryBalanceBefore);
+    expect(event.args.owner).to.be.equal(user.address);
   });
 
   it("deployChamber: Revert - Should revert on attempt to deploy a 6th chamber", async () => {
@@ -70,17 +81,16 @@ describe("ChamberFactory", () => {
   // ========================= SET TREASURY =============================
 
   it("setTreasury: Should set new treasury address", async () => {
-    await chamberFactory.connect(dev).setTreasury(accounts[4].address);
-    let treasury = await chamberFactory.getTreasury();
+    const receipt = await chamberFactory
+      .connect(dev)
+      .setTreasury(rando.address)
+      .then((tx) => tx.wait());
 
-    expect(treasury).to.be.equal(accounts[4].address);
-  });
+    const event = getEventObject("TreasuryChange", receipt.events);
+    const treasury = await chamberFactory.getTreasury();
 
-  it("setTreasury: EVENT - Should emit TreasuryChanges event upon change of treasury", async () => {
-    let tx = await chamberFactory.connect(dev).setTreasury(accounts[4].address);
-    let { events } = await tx.wait();
-
-    expect(inspectForEvent("TreasuryChanged", events));
+    expect(treasury).to.be.equal(rando.address);
+    expect(event.args.treasury).to.be.eq(rando.address);
   });
 
   // ========================= GET CHAMBERS =============================

@@ -27,29 +27,6 @@ interface IChamber {
         StrategyStatus status;
     }
 
-    event Supply(address indexed asset, uint256 amount);
-    event Deposit(address indexed asset, uint256 amount);
-    event Withdraw(address indexed asset, uint256 amount);
-    event Redeem(address indexed cToken, uint256 amount);
-    event ExecuteSwap(
-        address indexed sellToken,
-        address indexed buyToken,
-        uint256 amount,
-        bytes data
-    );
-    event NewStrategy(
-        bytes32 indexed hashId,
-        address indexed buyToken,
-        address indexed sellToken,
-        uint256 amount,
-        uint16 frequency
-    );
-
-    event ExecuteStrategy(bytes32 indexed hashId);
-    event UpdateStrategy(bytes32 indexed hashId);
-    event DeprecateStrategy(bytes32 indexed hashId);
-    event NewOperator(address indexed operator);
-
     function setChamberStatus(uint8) external;
 
     function setOperator(address) external;
@@ -114,4 +91,26 @@ interface IChamber {
     ) external;
 
     function deprecateStrategy(bytes32 hashId) external;
+
+    event NewOperator(address indexed operator);
+    event Deposit(address indexed asset, uint256 amount);
+    event Withdraw(address indexed asset, uint256 amount);
+    event UpdateStrategy(bytes32 indexed hashId);
+    event DeprecateStrategy(bytes32 indexed hashId);
+    event ExecuteSwap(
+        address indexed sellToken,
+        address indexed buyToken,
+        uint256 amount,
+        bytes data
+    );
+    event NewStrategy(
+        bytes32 indexed hashId,
+        address indexed buyToken,
+        address indexed sellToken,
+        uint256 amount,
+        uint16 frequency
+    );
+
+    event ExecuteStrategy(bytes32 indexed hashId);
+
 }
