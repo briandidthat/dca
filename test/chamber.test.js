@@ -38,7 +38,10 @@ describe("Chamber", () => {
       .deployChamber({ value: chamberFee })
       .then((tx) => tx.wait());
 
-    const event = getEventObject(EVENTS.NEW_CHAMBER, receipt.events);
+    const event = getEventObject(
+      EVENTS.chamberFactory.NEW_CHAMBER,
+      receipt.events
+    );
     // get the chamber we just deployed using the address from logs
     chamber = await ethers.getContractAt("IChamber", event.args.instance);
 
@@ -191,7 +194,7 @@ describe("Chamber", () => {
       )
       .then((tx) => tx.wait());
 
-    const event = getEventObject(EVENTS.EXECUTE_SWAP, receipt.events);
+    const event = getEventObject(EVENTS.chamber.EXECUTE_SWAP, receipt.events);
 
     const chamberWethBalance = await weth.balanceOf(chamber.address);
     const chamberBalance = await chamber.balanceOf(weth.address);
@@ -226,7 +229,7 @@ describe("Chamber", () => {
       )
       .then((tx) => tx.wait());
 
-    const event = getEventObject("ExecuteSwap", receipt.events);
+    const event = getEventObject(EVENTS.chamber.EXECUTE_SWAP, receipt.events);
 
     const chamberWethBalance = await weth.balanceOf(chamber.address);
     const chamberBalance = await chamber.balanceOf(weth.address);
@@ -265,7 +268,7 @@ describe("Chamber", () => {
       )
       .then((tx) => tx.wait());
 
-    const event = getEventObject(EVENTS.EXECUTE_SWAP, receipt.events);
+    const event = getEventObject(EVENTS.chamber.EXECUTE_SWAP, receipt.events);
     const usdcBalance = await usdc.balanceOf(chamber.address);
     const ethBalance = await ethers.provider.getBalance(chamber.address);
 
@@ -274,7 +277,7 @@ describe("Chamber", () => {
     expect(ethBalance).to.be.lt(ethAmount);
     expect(event.args.sellToken).to.be.equal(weth.address);
     expect(event.args.buyToken).to.be.equal(usdc.address);
-    expect(event.amount).to.be.equal(usdcAmount);
+    expect(event.args.amount).to.be.equal(usdcAmount);
   });
   // ========================= CREATE STRATEGY =============================
 
@@ -287,7 +290,7 @@ describe("Chamber", () => {
       .createStrategy(weth.address, dai.address, daiAmount, frequency)
       .then((tx) => tx.wait());
 
-    const event = getEventObject(EVENTS.NEW_STRATEGY, receipt.events);
+    const event = getEventObject(EVENTS.chamber.NEW_STRATEGY, receipt.events);
     const hash = getHash(user.address, weth.address, dai.address);
 
     expect(event.args.hashId).to.be.equal(hash);
@@ -327,7 +330,7 @@ describe("Chamber", () => {
       })
       .then((tx) => tx.wait());
 
-    const event = getEventObject(EVENTS.UPDATE_STRATEGY, receipt.events);
+    const event = getEventObject(EVENTS.chamber.UPDATE_STRATEGY, receipt.events);
 
     const updatedStrategy = await chamber
       .connect(user)
@@ -352,7 +355,7 @@ describe("Chamber", () => {
       .deprecateStrategy(hash)
       .then((tx) => tx.wait());
 
-    const event = getEventObject(EVENTS.DEPRECATE_STRATEGY, receipt.events);
+    const event = getEventObject(EVENTS.chamber.DEPRECATE_STRATEGY, receipt.events);
     const deprecatedStrategy = await chamber.connect(user).getStrategy(hash);
     const activeStrategies = await chamber.getActiveStrategies();
 
@@ -384,7 +387,7 @@ describe("Chamber", () => {
       .executeStrategy(hash, quote.allowanceTarget, quote.to, quote.data)
       .then((tx) => tx.wait());
 
-    const event = getEventObject(EVENTS.EXECUTE_SWAP, receipt.events);
+    const event = getEventObject(EVENTS.chamber.EXECUTE_STRATEGY, receipt.events);
 
     const strategy = await chamber.getStrategy(hash);
     const balance = await weth.balanceOf(chamber.address);
@@ -417,7 +420,7 @@ describe("Chamber", () => {
       .executeStrategy(hash, quote.allowanceTarget, quote.to, quote.data)
       .then((tx) => tx.wait());
 
-    const event = getEventObject(EVENTS.EXECUTE_STRATEGY, receipt.events);
+    const event = getEventObject(EVENTS.chamber.EXECUTE_STRATEGY, receipt.events);
 
     const strategy = await chamber.getStrategy(hash);
     const balance = await weth.balanceOf(chamber.address);
@@ -442,7 +445,7 @@ describe("Chamber", () => {
       .setOperator(operator.address)
       .then((tx) => tx.wait());
 
-    const event = getEventObject(EVENTS.NEW_OPERATOR, tx.events);
+    const event = getEventObject(EVENTS.chamber.NEW_OPERATOR, tx.events);
 
     const operatorAddr = await chamber.getOperator();
     expect(operatorAddr).to.be.equal(operator.address);
