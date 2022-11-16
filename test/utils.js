@@ -1,7 +1,5 @@
 const { ethers, web3 } = require("hardhat");
 
-const { Contract, ContractFactory } = ethers;
-
 const ETH = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
 const DAI = "0x6B175474E89094C44Da98b954EedeAC495271d0F";
 const USDC = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
@@ -30,7 +28,7 @@ const EVENTS = {
     UPDATE_STRATEGY: "UpdateStrategy",
     EXECUTE_STRATEGY: "ExecuteStrategy",
     DEPRECATE_STRATEGY: "DeprecateStrategy",
-    EXECUTE_SWAP: "ExecuteStrategy"
+    EXECUTE_SWAP: "ExecuteSwap"
   },
   chamberFactory: {
     NEW_CHAMBER: "NewChamber",

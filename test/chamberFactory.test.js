@@ -1,9 +1,6 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
-const {
-  chamberFactoryFixture,
-  getEventObject,
-} = require("./utils");
+const { chamberFactoryFixture, getEventObject, EVENTS } = require("./utils");
 
 describe("ChamberFactory", () => {
   let dev, user, treasury, rando;
@@ -20,7 +17,10 @@ describe("ChamberFactory", () => {
       .connect(user)
       .deployChamber({ value: chamberFee })
       .then((tx) => tx.wait());
-    const event = getEventObject("NewChamber", receipt.events);
+    const event = getEventObject(
+      EVENTS.chamberFactory.NEW_CHAMBER,
+      receipt.events
+    );
 
     // get the chamber we just deployed using the address from logs
     chamber = await ethers.getContractAt("IChamber", event.args.instance);
@@ -35,14 +35,18 @@ describe("ChamberFactory", () => {
   // ========================= DEPLOY CHAMBER =============================
 
   it("deployChamber: Event - Should emit a NewChamber event on deployment", async () => {
-    const treasuryBalanceBefore = await ethers.provider.getBalance(treasury.address);
+    const treasuryBalanceBefore = await ethers.provider.getBalance(
+      treasury.address
+    );
     const receipt = await chamberFactory
       .connect(user)
       .deployChamber({ value: chamberFee })
       .then((tx) => tx.wait());
 
     const event = getEventObject("NewChamber", receipt.events);
-    const treasuryBalanceAfter = await ethers.provider.getBalance(treasury.address);
+    const treasuryBalanceAfter = await ethers.provider.getBalance(
+      treasury.address
+    );
 
     expect(treasuryBalanceAfter).to.be.gt(treasuryBalanceBefore);
     expect(event.args.owner).to.be.equal(user.address);
