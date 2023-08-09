@@ -33,7 +33,7 @@ module.exports = {
     },
     hardhat: {
       forking: {
-        url: process.env.ALCHEMY_URL,
+        url: "https://rpc.ankr.com/eth",
         blockNumber: 15980109,
       },
     },
