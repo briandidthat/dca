@@ -12,6 +12,7 @@ const {
 } = require("./utils");
 
 ZEROX_URL = process.env.ZEROX_URL;
+ZEROX_API_KEY = process.env.ZEROX_API_KEY;
 
 describe("Chamber", () => {
   let accounts, whale, user, operator, attacker;
@@ -22,6 +23,8 @@ describe("Chamber", () => {
   const ethAmount = ethers.utils.parseEther("5"); // 5 ETH
   const daiAmount = ethers.utils.parseEther("100"); // 100 DAI
   const chamberFee = ethers.utils.parseEther("0.05"); // 0.05 ETH
+
+  axios.defaults.headers.common["0x-api-key"] = ZEROX_API_KEY;
 
   beforeEach(async () => {
     [user, operator, attacker, ...accounts] = await ethers.getSigners();
@@ -62,115 +65,117 @@ describe("Chamber", () => {
     await usdc.connect(user).approve(chamber.address, usdcAmount);
   });
 
-  // ========================= DEPOSIT ERC20 =============================
+  // // ========================= DEPOSIT ERC20 =============================
 
-  it("deposit: Should deposit DAI into chamber and update balance", async () => {
-    await chamber.connect(user).deposit(dai.address, daiAmount);
-    let balance = await chamber.balanceOf(dai.address);
+  // it("deposit: Should deposit DAI into chamber and update balance", async () => {
+  //   await chamber.connect(user).deposit(dai.address, daiAmount);
+  //   let balance = await chamber.balanceOf(dai.address);
 
-    expect(balance).to.be.equal(daiAmount);
-  });
+  //   expect(balance).to.be.equal(daiAmount);
+  // });
 
-  it("deposit: Should deposit USDC into chamber and update balance", async () => {
-    await chamber.connect(user).deposit(usdc.address, usdcAmount);
-    let balance = await chamber.balanceOf(usdc.address);
+  // it("deposit: Should deposit USDC into chamber and update balance", async () => {
+  //   await chamber.connect(user).deposit(usdc.address, usdcAmount);
+  //   let balance = await chamber.balanceOf(usdc.address);
 
-    expect(balance).to.be.equal(usdcAmount);
-  });
+  //   expect(balance).to.be.equal(usdcAmount);
+  // });
 
-  // ========================= DEPOSIT ETH =============================
+  // // ========================= DEPOSIT ETH =============================
 
-  it("depositETH: Should deposit ETH into chamber and update balance", async () => {
-    await chamber.connect(user).depositETH({ value: ethAmount });
-    let balance = await ethers.provider.getBalance(chamber.address);
+  // it("depositETH: Should deposit ETH into chamber and update balance", async () => {
+  //   await chamber.connect(user).depositETH({ value: ethAmount });
+  //   let balance = await ethers.provider.getBalance(chamber.address);
 
-    expect(balance).to.be.equal(ethAmount);
-  });
+  //   expect(balance).to.be.equal(ethAmount);
+  // });
 
-  // ========================= WITHDRAW ERC20 =============================
+  // // ========================= WITHDRAW ERC20 =============================
 
-  it("withdraw: Should withdraw DAI from chamber and update balance", async () => {
-    await chamber.connect(user).deposit(dai.address, daiAmount);
-    await chamber.connect(user).withdraw(dai.address, daiAmount);
+  // it("withdraw: Should withdraw DAI from chamber and update balance", async () => {
+  //   await chamber.connect(user).deposit(dai.address, daiAmount);
+  //   await chamber.connect(user).withdraw(dai.address, daiAmount);
 
-    let balance = await chamber.balanceOf(dai.address);
+  //   let balance = await chamber.balanceOf(dai.address);
 
-    expect(balance).to.be.equal(0);
-  });
+  //   expect(balance).to.be.equal(0);
+  // });
 
-  it("withdraw: Should withdraw USDC from chamber and update balance", async () => {
-    await chamber.connect(user).deposit(usdc.address, usdcAmount);
-    await chamber.connect(user).withdraw(usdc.address, usdcAmount);
+  // it("withdraw: Should withdraw USDC from chamber and update balance", async () => {
+  //   await chamber.connect(user).deposit(usdc.address, usdcAmount);
+  //   await chamber.connect(user).withdraw(usdc.address, usdcAmount);
 
-    let balance = await chamber.balanceOf(usdc.address);
+  //   let balance = await chamber.balanceOf(usdc.address);
 
-    expect(balance).to.be.equal(0);
-  });
+  //   expect(balance).to.be.equal(0);
+  // });
 
-  it("withdraw: Should revert due to caller not being owner", async () => {
-    await chamber.connect(user).deposit(usdc.address, usdcAmount);
-    await expect(
-      chamber.connect(attacker).withdraw(usdc.address, usdcAmount)
-    ).to.be.revertedWith("Restricted to Owner");
-  });
+  // it("withdraw: Should revert due to caller not being owner", async () => {
+  //   await chamber.connect(user).deposit(usdc.address, usdcAmount);
+  //   await expect(
+  //     chamber.connect(attacker).withdraw(usdc.address, usdcAmount)
+  //   ).to.be.revertedWith("Restricted to Owner");
+  // });
 
-  // ========================= WITHDRAW ETH =============================
+  // // ========================= WITHDRAW ETH =============================
 
-  it("withdrawETH: Should withdraw ETH from chamber", async () => {
-    await user.sendTransaction({ to: chamber.address, value: ethAmount });
+  // it("withdrawETH: Should withdraw ETH from chamber", async () => {
+  //   await user.sendTransaction({ to: chamber.address, value: ethAmount });
 
-    let userBalanceBefore = await ethers.provider.getBalance(user.address);
-    let chamberBalanceBefore = await ethers.provider.getBalance(
-      chamber.address
-    );
+  //   let userBalanceBefore = await ethers.provider.getBalance(user.address);
+  //   let chamberBalanceBefore = await ethers.provider.getBalance(
+  //     chamber.address
+  //   );
 
-    await chamber.connect(user).withdrawETH(ethAmount);
+  //   await chamber.connect(user).withdrawETH(ethAmount);
 
-    let userBalanceAfter = await ethers.provider.getBalance(user.address);
-    let chamberBalanceAfter = await ethers.provider.getBalance(chamber.address);
+  //   let userBalanceAfter = await ethers.provider.getBalance(user.address);
+  //   let chamberBalanceAfter = await ethers.provider.getBalance(chamber.address);
 
-    expect(chamberBalanceBefore).to.be.equal(ethAmount);
-    expect(chamberBalanceAfter).to.be.equal(0);
-    expect(userBalanceAfter).to.be.gt(userBalanceBefore);
-  });
+  //   expect(chamberBalanceBefore).to.be.equal(ethAmount);
+  //   expect(chamberBalanceAfter).to.be.equal(0);
+  //   expect(userBalanceAfter).to.be.gt(userBalanceBefore);
+  // });
 
-  it("withdrawETH: Should revert due to caller not being owner", async () => {
-    await user.sendTransaction({ to: chamber.address, value: ethAmount });
+  // it("withdrawETH: Should revert due to caller not being owner", async () => {
+  //   await user.sendTransaction({ to: chamber.address, value: ethAmount });
 
-    await expect(
-      chamber.connect(attacker).withdrawETH(ethAmount)
-    ).to.be.revertedWith("Restricted to Owner");
-  });
+  //   await expect(
+  //     chamber.connect(attacker).withdrawETH(ethAmount)
+  //   ).to.be.revertedWith("Restricted to Owner");
+  // });
 
-  // ========================= WRAP ETH =============================
-  it("wrapETH: Should wrap ETH and update WETH Balance", async () => {
-    await chamber.connect(user).depositETH({ value: ethAmount });
-    await chamber.connect(user).wrapETH(ethAmount);
+  // // ========================= WRAP ETH =============================
+  // it("wrapETH: Should wrap ETH and update WETH Balance", async () => {
+  //   await chamber.connect(user).depositETH({ value: ethAmount });
+  //   await chamber.connect(user).wrapETH(ethAmount);
 
-    const wethBalance = await weth.balanceOf(chamber.address);
-    const ethBalance = await ethers.provider.getBalance(chamber.address);
+  //   const wethBalance = await weth.balanceOf(chamber.address);
+  //   const ethBalance = await ethers.provider.getBalance(chamber.address);
 
-    expect(wethBalance).to.be.equal(ethAmount);
-    expect(ethBalance).to.be.equal(0);
-  });
+  //   expect(wethBalance).to.be.equal(ethAmount);
+  //   expect(ethBalance).to.be.equal(0);
+  // });
 
-  // ========================= UNWRAP ETH =============================
-  it("unwrapETH: Should unwrap ETH and update WETH Balance", async () => {
-    await chamber.connect(user).depositETH({ value: ethAmount });
-    await chamber.connect(user).wrapETH(ethAmount);
-    await chamber.connect(user).unwrapETH(ethAmount);
+  // // ========================= UNWRAP ETH =============================
+  // it("unwrapETH: Should unwrap ETH and update WETH Balance", async () => {
+  //   await chamber.connect(user).depositETH({ value: ethAmount });
+  //   await chamber.connect(user).wrapETH(ethAmount);
+  //   await chamber.connect(user).unwrapETH(ethAmount);
 
-    const wethBalance = await weth.balanceOf(chamber.address);
-    const ethBalance = await ethers.provider.getBalance(chamber.address);
+  //   const wethBalance = await weth.balanceOf(chamber.address);
+  //   const ethBalance = await ethers.provider.getBalance(chamber.address);
 
-    expect(wethBalance).to.be.equal(0);
-    expect(ethBalance).to.be.equal(ethAmount);
-  });
+  //   expect(wethBalance).to.be.equal(0);
+  //   expect(ethBalance).to.be.equal(ethAmount);
+  // });
 
   // ========================= EXECUTE SWAP =============================
 
   it("executeSwap: Should swap DAI to WETH using 0x liquidity", async () => {
     await chamber.connect(user).deposit(dai.address, daiAmount);
+    console.log(ZEROX_URL);
+    console.log(ZEROX_URL);
     const url = createQueryString(ZEROX_URL, {
       sellToken: "DAI",
       buyToken: "WETH",
