@@ -75,11 +75,12 @@ interface IChamber {
     ) external payable;
 
     function createStrategy(
+        bytes32 hashId,
         address buyToken,
         address sellToken,
         uint256 amount,
         uint16 frequency
-    ) external returns (bytes32 hashId);
+    ) external returns (bytes32);
 
     function updateStrategy(Strategy memory strategy) external;
 
