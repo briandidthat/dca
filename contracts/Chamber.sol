@@ -124,6 +124,7 @@ contract Chamber is IChamber, Initializable {
     }
 
     function createStrategy(
+        bytes32 _hashId,
         address _buyToken,
         address _sellToken,
         uint256 _amount,
@@ -138,16 +139,12 @@ contract Chamber is IChamber, Initializable {
             "Insufficient funds for Strategy"
         );
 
-        bytes32 hashed = keccak256(
-            abi.encodePacked(owner, _buyToken, _sellToken)
-        );
-
-        if (strategies[hashed].sellToken != address(0)) {
+        if (strategies[_hashId].sellToken != address(0)) {
             revert("Strategy for that pair already exists");
         }
 
         Strategy memory strategy = Strategy({
-            hashId: hashed,
+            hashId: _hashId,
             buyToken: _buyToken,
             sellToken: _sellToken,
             amount: _amount,
@@ -158,13 +155,13 @@ contract Chamber is IChamber, Initializable {
             status: StrategyStatus.ACTIVE
         });
 
-        emit NewStrategy(hashed, _buyToken, _sellToken, _amount, _frequency);
+        emit NewStrategy(_hashId, _buyToken, _sellToken, _amount, _frequency);
 
-        strategies[hashed] = strategy;
-        strategyHashes.push(hashed);
+        strategies[_hashId] = strategy;
+        strategyHashes.push(_hashId);
         activeStrategies++;
 
-        return hashed;
+        return _hashId;
     }
 
     function updateStrategy(Strategy memory _strategy) external onlyOwner {

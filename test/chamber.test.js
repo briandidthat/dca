@@ -12,16 +12,22 @@ const {
 } = require("./utils");
 
 ZEROX_URL = process.env.ZEROX_URL;
+ZEROX_API_KEY = process.env.ZEROX_API_KEY;
 
 describe("Chamber", () => {
   let accounts, whale, user, operator, attacker;
   let chamber, chamberFactory;
   let weth, dai, usdc;
 
+  const STRATEGY_HASH = getHash("First Strategy");
+  const STRATEGY2_HASH = getHash("Second Strategy");
+
   const usdcAmount = 100n * 10n ** 6n; // 100 USDC
   const ethAmount = ethers.utils.parseEther("5"); // 5 ETH
   const daiAmount = ethers.utils.parseEther("100"); // 100 DAI
   const chamberFee = ethers.utils.parseEther("0.05"); // 0.05 ETH
+
+  axios.defaults.headers.common["0x-api-key"] = ZEROX_API_KEY;
 
   beforeEach(async () => {
     [user, operator, attacker, ...accounts] = await ethers.getSigners();
@@ -62,7 +68,7 @@ describe("Chamber", () => {
     await usdc.connect(user).approve(chamber.address, usdcAmount);
   });
 
-  // ========================= DEPOSIT ERC20 =============================
+  // // ========================= DEPOSIT ERC20 =============================
 
   it("deposit: Should deposit DAI into chamber and update balance", async () => {
     await chamber.connect(user).deposit(dai.address, daiAmount);
@@ -171,6 +177,7 @@ describe("Chamber", () => {
 
   it("executeSwap: Should swap DAI to WETH using 0x liquidity", async () => {
     await chamber.connect(user).deposit(dai.address, daiAmount);
+
     const url = createQueryString(ZEROX_URL, {
       sellToken: "DAI",
       buyToken: "WETH",
@@ -285,18 +292,17 @@ describe("Chamber", () => {
     await chamber.connect(user).deposit(dai.address, daiAmount);
 
     const frequency = 7;
+
     let receipt = await chamber
       .connect(user)
-      .createStrategy(weth.address, dai.address, daiAmount, frequency)
+      .createStrategy(STRATEGY_HASH, weth.address, dai.address, daiAmount, frequency)
       .then((tx) => tx.wait());
 
     const event = getEventObject(EVENTS.chamber.NEW_STRATEGY, receipt.events);
-    const hash = getHash(user.address, weth.address, dai.address);
 
-    expect(event.args.hashId).to.be.equal(hash);
+    expect(event.args.hashId).to.be.equal(STRATEGY_HASH);
     expect(event.args.amount).to.be.equal(daiAmount);
     expect(event.args.frequency).to.be.equal(frequency);
-    expect(event.args.hashId).to.be.equal(hash);
   });
 
   // ========================= UPDATE STRATEGY =============================
@@ -307,10 +313,9 @@ describe("Chamber", () => {
 
     await chamber
       .connect(user)
-      .createStrategy(weth.address, usdc.address, usdcAmount, frequency);
+      .createStrategy(STRATEGY_HASH, weth.address, usdc.address, usdcAmount, frequency);
 
-    const hash = getHash(user.address, weth.address, usdc.address);
-    const strategy = await chamber.connect(user).getStrategy(hash);
+    const strategy = await chamber.connect(user).getStrategy(STRATEGY_HASH);
     const updatedFrequency = 10;
     const updatedAmount = usdcAmount + usdcAmount;
 
@@ -338,7 +343,7 @@ describe("Chamber", () => {
 
     expect(updatedStrategy.amount).to.be.equal(updatedAmount);
     expect(updatedStrategy.frequency).to.be.equal(updatedFrequency);
-    expect(event.args.hashId).to.be.equal(hash);
+    expect(event.args.hashId).to.be.equal(STRATEGY_HASH);
   });
 
   // ========================= DEPRECATE STRATEGY =============================
@@ -347,21 +352,20 @@ describe("Chamber", () => {
     await chamber.connect(user).deposit(usdc.address, usdcAmount);
     await chamber
       .connect(user)
-      .createStrategy(weth.address, usdc.address, usdcAmount, 1);
+      .createStrategy(STRATEGY_HASH, weth.address, usdc.address, usdcAmount, 1);
 
-    const hash = getHash(user.address, weth.address, usdc.address);
     const receipt = await chamber
       .connect(user)
-      .deprecateStrategy(hash)
+      .deprecateStrategy(STRATEGY_HASH)
       .then((tx) => tx.wait());
 
     const event = getEventObject(EVENTS.chamber.DEPRECATE_STRATEGY, receipt.events);
-    const deprecatedStrategy = await chamber.connect(user).getStrategy(hash);
+    const deprecatedStrategy = await chamber.connect(user).getStrategy(STRATEGY_HASH);
     const activeStrategies = await chamber.getActiveStrategies();
 
     expect(deprecatedStrategy.status).to.be.equal(1); // 1 == DEACTIVATED
     expect(activeStrategies.length).to.be.equal(0); // should be 0 active strats
-    expect(event.args.hashId).to.be.equal(hash);
+    expect(event.args.hashId).to.be.equal(STRATEGY_HASH);
   });
 
   // ========================= EXECUTE STRATEGY =============================
@@ -370,7 +374,7 @@ describe("Chamber", () => {
     await chamber.connect(user).deposit(usdc.address, usdcAmount);
     await chamber
       .connect(user)
-      .createStrategy(weth.address, usdc.address, usdcAmount, 7);
+      .createStrategy(STRATEGY_HASH, weth.address, usdc.address, usdcAmount, 7);
 
     const url = createQueryString(ZEROX_URL, {
       sellToken: "USDC",
@@ -380,22 +384,21 @@ describe("Chamber", () => {
     const response = await axios.get(url);
 
     const quote = response.data;
-    const hash = getHash(user.address, weth.address, usdc.address);
 
     const receipt = await chamber
       .connect(user)
-      .executeStrategy(hash, quote.allowanceTarget, quote.to, quote.data)
+      .executeStrategy(STRATEGY_HASH, quote.allowanceTarget, quote.to, quote.data)
       .then((tx) => tx.wait());
 
     const event = getEventObject(EVENTS.chamber.EXECUTE_STRATEGY, receipt.events);
 
-    const strategy = await chamber.getStrategy(hash);
+    const strategy = await chamber.getStrategy(STRATEGY_HASH);
     const balance = await weth.balanceOf(chamber.address);
 
     expect(balance).to.be.gt(0);
     expect(strategy.lastSwap).to.be.gt(0);
     expect(strategy.swapCount).to.be.eq(1);
-    expect(event.args.hashId).to.be.equal(hash);
+    expect(event.args.hashId).to.be.equal(STRATEGY_HASH);
   });
 
   it("executeStrategy: Should execute strategy by operator", async () => {
@@ -403,7 +406,7 @@ describe("Chamber", () => {
     await chamber.connect(user).setOperator(operator.address);
     await chamber
       .connect(user)
-      .createStrategy(weth.address, usdc.address, usdcAmount, 7);
+      .createStrategy(STRATEGY_HASH, weth.address, usdc.address, usdcAmount, 7);
 
     const url = createQueryString(ZEROX_URL, {
       sellToken: "USDC",
@@ -413,21 +416,20 @@ describe("Chamber", () => {
     const response = await axios.get(url);
 
     const quote = response.data;
-    const hash = getHash(user.address, weth.address, usdc.address);
 
     const receipt = await chamber
       .connect(operator)
-      .executeStrategy(hash, quote.allowanceTarget, quote.to, quote.data)
+      .executeStrategy(STRATEGY_HASH, quote.allowanceTarget, quote.to, quote.data)
       .then((tx) => tx.wait());
 
     const event = getEventObject(EVENTS.chamber.EXECUTE_STRATEGY, receipt.events);
 
-    const strategy = await chamber.getStrategy(hash);
+    const strategy = await chamber.getStrategy(STRATEGY_HASH);
     const balance = await weth.balanceOf(chamber.address);
 
     expect(balance).to.be.gt(0);
     expect(strategy.lastSwap).to.be.gt(0);
-    expect(event.args.hashId).to.be.equal(hash);
+    expect(event.args.hashId).to.be.equal(STRATEGY_HASH);
   });
 
   // ========================= SET STATUS =============================
@@ -478,12 +480,11 @@ describe("Chamber", () => {
 
     await chamber
       .connect(user)
-      .createStrategy(weth.address, usdc.address, usdcAmount, frequency);
+      .createStrategy(STRATEGY_HASH, weth.address, usdc.address, usdcAmount, frequency);
 
-    const hash = getHash(user.address, weth.address, usdc.address);
-    const strategy = await chamber.connect(user).getStrategy(hash);
+    const strategy = await chamber.connect(user).getStrategy(STRATEGY_HASH);
 
-    expect(strategy.hashId).to.be.equal(hash);
+    expect(strategy.hashId).to.be.equal(STRATEGY_HASH);
     expect(strategy.lastSwap).to.be.equal(0);
     expect(strategy.amount).to.be.equal(usdcAmount);
     expect(strategy.frequency).to.be.equal(frequency);
@@ -497,11 +498,11 @@ describe("Chamber", () => {
     const frequency = 7;
     await chamber
       .connect(user)
-      .createStrategy(weth.address, dai.address, daiAmount, frequency);
+      .createStrategy(STRATEGY_HASH, weth.address, dai.address, daiAmount, frequency);
 
     await chamber
       .connect(user)
-      .createStrategy(weth.address, usdc.address, usdcAmount, frequency);
+      .createStrategy(STRATEGY2_HASH, weth.address, usdc.address, usdcAmount, frequency);
 
     const strategies = await chamber.connect(user).getStrategies();
     const strategy = strategies[0];
@@ -518,13 +519,12 @@ describe("Chamber", () => {
 
     await chamber
       .connect(user)
-      .createStrategy(weth.address, usdc.address, usdcAmount, 1); // 1 strategy
+      .createStrategy(STRATEGY_HASH, weth.address, usdc.address, usdcAmount, 1); // 1 strategy
     await chamber
       .connect(user)
-      .createStrategy(weth.address, dai.address, daiAmount, 1); // 2nd strategy
+      .createStrategy(STRATEGY2_HASH, weth.address, dai.address, daiAmount, 1); // 2nd strategy
 
-    const hash = getHash(user.address, weth.address, usdc.address);
-    await chamber.connect(user).deprecateStrategy(hash);
+    await chamber.connect(user).deprecateStrategy(STRATEGY_HASH);
 
     const activeStrategies = await chamber.getActiveStrategies();
 
