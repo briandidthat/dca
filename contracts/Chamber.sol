@@ -88,14 +88,13 @@ contract Chamber is IChamber, Initializable {
     }
 
     function depositETH() external payable {
-        emit Deposit(address(0), msg.value);
+        emit Deposit(ChamberLibrary.ETH, msg.value);
     }
 
-    function withdraw(address _asset, uint256 _amount)
-        external
-        override
-        onlyOwner
-    {
+    function withdraw(
+        address _asset,
+        uint256 _amount
+    ) external override onlyOwner {
         require(
             IERC20(_asset).balanceOf(address(this)) >= _amount,
             "Insufficient balance"
@@ -107,12 +106,9 @@ contract Chamber is IChamber, Initializable {
         emit Withdraw(_asset, _amount);
     }
 
-    function withdrawETH(uint256 _amount)
-        external
-        override
-        onlyOwner
-        returns (bool)
-    {
+    function withdrawETH(
+        uint256 _amount
+    ) external override onlyOwner returns (bool) {
         require(address(this).balance >= _amount, "Insufficient balance");
 
         (bool success, bytes memory data) = owner.call{value: _amount}("");
@@ -143,7 +139,13 @@ contract Chamber is IChamber, Initializable {
             revert("Strategy for that pair already exists");
         }
 
+        uint256 index = 0;
+        if (strategyHashes.length != 0) {
+            index = strategyHashes.length - 1;
+        }
+
         Strategy memory strategy = Strategy({
+            idx: index,
             hashId: _hashId,
             buyToken: _buyToken,
             sellToken: _sellToken,
@@ -174,6 +176,24 @@ contract Chamber is IChamber, Initializable {
         strategy.status = StrategyStatus.DEPRECATED;
         activeStrategies--;
         emit DeprecateStrategy(_hash);
+    }
+
+    function reactivateStrategy(bytes32 _hash) external override onlyOwner {
+        Strategy storage strategy = strategies[_hash];
+        strategy.status = StrategyStatus.ACTIVE;
+        activeStrategies++;
+        emit ReactivateStrategy(_hash);
+    }
+
+    function deleteStrategy(bytes32 _hash) external override onlyOwner {
+        Strategy memory strategy = strategies[_hash];
+        if (strategy.status == StrategyStatus.ACTIVE) {
+            activeStrategies--;
+        }
+
+        delete strategies[_hash];
+        delete strategyHashes[strategy.idx];
+        emit DeleteStrategy(_hash);
     }
 
     function executeStrategy(
@@ -287,11 +307,9 @@ contract Chamber is IChamber, Initializable {
         return status;
     }
 
-    function getStrategy(bytes32 _hash)
-        external
-        view
-        returns (Strategy memory)
-    {
+    function getStrategy(
+        bytes32 _hash
+    ) external view returns (Strategy memory) {
         Strategy memory strategy = strategies[_hash];
 
         require(strategy.buyToken != address(0), "Strategy not found");
@@ -325,12 +343,9 @@ contract Chamber is IChamber, Initializable {
         return active;
     }
 
-    function balanceOf(address _asset)
-        external
-        view
-        override
-        returns (uint256)
-    {
+    function balanceOf(
+        address _asset
+    ) external view override returns (uint256) {
         if (_asset == ChamberLibrary.ETH) {
             return address(this).balance;
         }
