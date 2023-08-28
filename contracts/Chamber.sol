@@ -234,7 +234,7 @@ contract Chamber is IChamber, Initializable {
         address _spender,
         address payable _swapTarget,
         bytes calldata _swapCallData
-    ) external payable override onlyOwner {
+    ) external payable override onlyAuthorized {
         bool success = _executeSwap(
             _sellToken,
             _buyToken,

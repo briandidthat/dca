@@ -8,11 +8,20 @@ library ChamberLibrary {
     address public constant USDT = 0xdAC17F958D2ee523a2206206994597C13D831ec7;
     address public constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
 
-    function getRevertMsg(bytes memory _returnData)
-        external
-        pure
-        returns (string memory)
-    {
+    struct ChamberOwner {
+        address owner;
+        uint8 count;
+    }
+
+    struct ChamberDetails {
+        address instance;
+        address owner;
+        uint256 timestamp;
+    }
+
+    function getRevertMsg(
+        bytes memory _returnData
+    ) external pure returns (string memory) {
         if (_returnData.length < 68) return "Transaction reverted silently";
 
         assembly {
@@ -21,5 +30,4 @@ library ChamberLibrary {
 
         return abi.decode(_returnData, (string));
     }
-
 }
