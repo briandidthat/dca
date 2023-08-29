@@ -245,7 +245,7 @@ describe("Chamber", () => {
     expect(chamberBalance).to.be.equal(chamberWethBalance);
     expect(event.args.sellToken).to.be.equal(usdc.address);
     expect(event.args.buyToken).to.be.equal(weth.address);
-    expect(event.args.amount).to.be.equal(usdcAmount);
+    expect(event.args.amount).to.be.equal(usdcAmount); 
   });
 
   it("executeSwap: Should swap WETH to USDC using 0x liquidity", async () => {
@@ -365,6 +365,30 @@ describe("Chamber", () => {
 
     expect(deprecatedStrategy.status).to.be.equal(1); // 1 == DEACTIVATED
     expect(activeStrategies.length).to.be.equal(0); // should be 0 active strats
+    expect(event.args.hashId).to.be.equal(STRATEGY_HASH);
+  });
+
+  // ========================= DELETE STRATEGY ================================
+
+  it("deleteStrategy: Should create another strategy at same hash after deleting", async () => {
+    await chamber.connect(user).deposit(usdc.address, usdcAmount);
+    await chamber
+      .connect(user)
+      .createStrategy(STRATEGY_HASH, weth.address, usdc.address, usdcAmount, 1);
+    // delete the strategy we just created
+    const receipt = await chamber
+      .connect(user)
+      .deleteStrategy(STRATEGY_HASH)
+      .then((tx) => tx.wait());
+    const event = getEventObject(EVENTS.chamber.DELETE_STRATEGY, receipt.events);
+    // create another strategy at the same hash
+    await chamber
+      .connect(user)
+      .createStrategy(STRATEGY_HASH, weth.address, usdc.address, usdcAmount, 7);
+    // get all trategies, should be only 1
+    const strategies = await chamber.getStrategies();
+
+    expect(strategies.length).to.be.equal(1); // should be 1 active strategy
     expect(event.args.hashId).to.be.equal(STRATEGY_HASH);
   });
 

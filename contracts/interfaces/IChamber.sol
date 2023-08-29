@@ -16,10 +16,11 @@ interface IChamber {
     }
 
     struct Strategy {
+        uint16 frequency;
         bytes32 hashId;
         address buyToken;
         address sellToken;
-        uint16 frequency;
+        uint256 idx;
         uint256 amount;
         uint256 timestamp;
         uint256 swapCount;
@@ -93,11 +94,17 @@ interface IChamber {
 
     function deprecateStrategy(bytes32 hashId) external;
 
+    function reactivateStrategy(bytes32 hashId) external;
+
+    function deleteStrategy(bytes32 hashId) external;
+
     event NewOperator(address indexed operator);
     event Deposit(address indexed asset, uint256 amount);
     event Withdraw(address indexed asset, uint256 amount);
     event UpdateStrategy(bytes32 indexed hashId);
     event DeprecateStrategy(bytes32 indexed hashId);
+    event DeleteStrategy(bytes32 indexed hashId);
+    event ReactivateStrategy(bytes32 indexed hashId);
     event ExecuteSwap(
         address indexed sellToken,
         address indexed buyToken,
@@ -113,5 +120,4 @@ interface IChamber {
     );
 
     event ExecuteStrategy(bytes32 indexed hashId);
-
 }

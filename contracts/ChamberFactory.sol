@@ -2,8 +2,10 @@
 pragma solidity ^0.8.0;
 
 import "./Chamber.sol";
+import "./StorageFacility.sol";
 import "./interfaces/IChamber.sol";
 import "./interfaces/ChamberLibrary.sol";
+import "./interfaces/IStorageFacility.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/proxy/Clones.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -15,27 +17,15 @@ contract ChamberFactory is Ownable {
     uint256 private instances;
     uint256 private fee = 0.05 ether;
     address[] private deployers;
-    mapping(address => ChamberOwner) chamberOwners;
-    mapping(address => ChamberDetails[]) private chambers;
+    IStorageFacility private storageFacility =
+        new StorageFacility(treasury, address(this));
+
     mapping(address => bool) private hasChamber;
 
     event FactoryLogger(address indexed instance, bytes32 data);
     event FeeChanged(uint256 previousFee, uint256 newFee);
     event NewChamber(address indexed instance, address indexed owner);
     event TreasuryChange(address indexed treasury);
-
-    struct ChamberOwner {
-        address owner;
-        bytes32 username;
-        uint8 limit;
-        uint8 count;
-    }
-
-    struct ChamberDetails {
-        address instance;
-        address owner;
-        uint256 timestamp;
-    }
 
     constructor(address _treasury) {
         implementation = address(new Chamber());
@@ -51,13 +41,6 @@ contract ChamberFactory is Ownable {
         require(msg.value >= fee, "Must pay fee to deploy chamber");
         bool ownsChamber = hasChamber[msg.sender];
 
-        if (ownsChamber) {
-            require(
-                chambers[msg.sender].length < 5,
-                "You have reached max chamber amount"
-            );
-        }
-
         address clone = Clones.clone(implementation);
         IChamber(clone).initialize(address(this), msg.sender, msg.sender);
 
@@ -69,19 +52,13 @@ contract ChamberFactory is Ownable {
 
         require(success, ChamberLibrary.getRevertMsg(data));
 
-        ChamberDetails memory chamber = ChamberDetails({
-            instance: clone,
-            owner: msg.sender,
-            timestamp: block.timestamp
-        });
-
         instances++;
         if (!ownsChamber) {
             hasChamber[msg.sender] = true;
             deployers.push(msg.sender);
         }
 
-        chambers[msg.sender].push(chamber);
+        storageFacility.storeChamber(clone, msg.sender);
 
         emit FactoryLogger(address(this), "State has been updated");
         instance = clone;
@@ -92,18 +69,6 @@ contract ChamberFactory is Ownable {
         emit TreasuryChange(_newTreasury);
     }
 
-    function getChambers(address _beneficiary)
-        external
-        view
-        returns (ChamberDetails[] memory)
-    {
-        require(
-            hasChamber[_beneficiary],
-            "No chambers present for that address"
-        );
-        return chambers[_beneficiary];
-    }
-
     function getFee() external view returns (uint256) {
         return fee;
     }
@@ -112,11 +77,32 @@ contract ChamberFactory is Ownable {
         return treasury;
     }
 
+    function getStorageAddress() external view returns (address) {
+        return address(storageFacility);
+    }
+
     function getInstanceCount() external view returns (uint256) {
         return instances;
     }
-    
+
     function getUniqueDeployersCount() external view returns (uint256) {
         return deployers.length;
+    }
+
+    function getUniqueDeployers()
+        external
+        view
+        onlyOwner
+        returns (address[] memory)
+    {
+        return deployers;
+    }
+
+    function setNewStorageAddress(address _newStorage) external onlyOwner {
+        storageFacility = IStorageFacility(_newStorage);
+        emit FactoryLogger(
+            address(storageFacility),
+            "Storage contract updated"
+        );
     }
 }

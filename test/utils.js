@@ -28,6 +28,8 @@ const EVENTS = {
     UPDATE_STRATEGY: "UpdateStrategy",
     EXECUTE_STRATEGY: "ExecuteStrategy",
     DEPRECATE_STRATEGY: "DeprecateStrategy",
+    DELETE_STRATEGY: "DeleteStrategy",
+    REACTIVATE_STRATEGY: "ReactivateStrategy",
     EXECUTE_SWAP: "ExecuteSwap"
   },
   chamberFactory: {
