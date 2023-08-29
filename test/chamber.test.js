@@ -385,7 +385,7 @@ describe("Chamber", () => {
     await chamber
       .connect(user)
       .createStrategy(STRATEGY_HASH, weth.address, usdc.address, usdcAmount, 7);
-    // get all trategies, should be only 1
+    // get all strategies, should be only 1
     const strategies = await chamber.getStrategies();
 
     expect(strategies.length).to.be.equal(1); // should be 1 active strategy
