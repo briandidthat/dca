@@ -17,7 +17,8 @@ contract ChamberFactory is Ownable {
     uint256 private instances;
     uint256 private fee = 0.05 ether;
     address[] private deployers;
-    IStorageFacility private storageFacility;
+    IStorageFacility private storageFacility =
+        new StorageFacility(treasury, address(this));
 
     mapping(address => bool) private hasChamber;
 
@@ -28,7 +29,6 @@ contract ChamberFactory is Ownable {
 
     constructor(address _treasury) {
         implementation = address(new Chamber());
-        storageFacility = new StorageFacility(_treasury, address(this));
         treasury = _treasury;
     }
 

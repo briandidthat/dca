@@ -8,6 +8,8 @@ contract StorageFacility is IStorageFacility {
     address private admin;
     address private factory;
 
+    event Logger(address indexed currentCaller, bytes32 data);
+
     mapping(address => ChamberLibrary.ChamberOwner) chamberOwners;
     mapping(address => ChamberLibrary.ChamberDetails[]) private chambers;
 
@@ -41,8 +43,13 @@ contract StorageFacility is IStorageFacility {
     function getChambers(
         address _owner
     ) external view override returns (ChamberLibrary.ChamberDetails[] memory) {
-        ChamberLibrary.ChamberDetails[] memory chamberDetails = chambers[_owner];
-        require(chamberDetails.length > 0, "No chambers present for that address");
+        ChamberLibrary.ChamberDetails[] memory chamberDetails = chambers[
+            _owner
+        ];
+        require(
+            chamberDetails.length > 0,
+            "No chambers present for that address"
+        );
         return chamberDetails;
     }
 
@@ -50,13 +57,12 @@ contract StorageFacility is IStorageFacility {
         address _instance,
         address _owner
     ) external override onlyFactory {
-        ChamberLibrary.ChamberOwner memory owner = chamberOwners[_owner];
-
         // store the owner if it is a first time user
-        if (owner.owner == address(0)) {
+        if (chamberOwners[_owner].owner == address(0)) {
             storeOwner(_owner, 0);
         }
 
+        ChamberLibrary.ChamberOwner memory owner = chamberOwners[_owner];
         ChamberLibrary.ChamberDetails memory chamber = ChamberLibrary
             .ChamberDetails({
                 instance: _instance,
@@ -66,15 +72,14 @@ contract StorageFacility is IStorageFacility {
         // add the chamber details to the owners array
         chambers[_owner].push(chamber);
         // increment the amount of chambers the owner has
-        chamberOwners[msg.sender].count += 1;
+        owner.count += 1;
+        chamberOwners[_owner] = owner;
     }
 
-    function storeOwner(
-        address _owner,
-        uint8 _count
-    ) internal {
+    function storeOwner(address _owner, uint8 _count) internal {
         ChamberLibrary.ChamberOwner memory chamberOwner = ChamberLibrary
             .ChamberOwner({owner: _owner, count: _count});
-        chamberOwners[msg.sender] = chamberOwner;
+        chamberOwners[_owner] = chamberOwner;
+        emit Logger(_owner, "Stored new owner");
     }
 }

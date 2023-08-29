@@ -32,7 +32,6 @@ describe("StorageFacility", () => {
     // ========================= GET CHAMBER OWNER =============================
     it("getChamberOwner: Should return the chamber owners details", async () => {
         const details = await storageFacility.getChamberOwner(user.address);
-        console.log(details);
 
         expect(details.owner).to.be.equal(user.address);
         expect(details.count).to.be.equal(1);
