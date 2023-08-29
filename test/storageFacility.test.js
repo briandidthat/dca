@@ -37,6 +37,11 @@ describe("StorageFacility", () => {
         expect(details.count).to.be.equal(1);
     });
 
+    it("getChamberOwner: Revert - Should revert due to no existing chamber for owner", async () => {
+        await expect(storageFacility.getChamberOwner(dev.address)).to.be.revertedWith(
+            "No chambers present for that address"
+        );
+    });
 
     // ========================= GET CHAMBERS =============================
 
