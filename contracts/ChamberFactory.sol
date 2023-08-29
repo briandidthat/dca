@@ -17,10 +17,11 @@ contract ChamberFactory is Ownable {
     uint256 private instances;
     uint256 private fee = 0.05 ether;
     address[] private deployers;
-    IStorageFacility private storageFacility =
-        new StorageFacility(treasury, address(this));
 
     mapping(address => bool) private hasChamber;
+
+    IStorageFacility private storageFacility =
+        new StorageFacility(treasury, address(this));
 
     event FactoryLogger(address indexed instance, bytes32 data);
     event FeeChanged(uint256 previousFee, uint256 newFee);
