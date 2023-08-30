@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity ^0.8.0;
 
-import "./interfaces/ChamberLibrary.sol";
+import "./interfaces/VaultLibrary.sol";
 import "./interfaces/IStorageFacility.sol";
 
 contract StorageFacility is IStorageFacility {
@@ -10,8 +10,8 @@ contract StorageFacility is IStorageFacility {
 
     event Logger(address indexed caller, bytes32 data);
 
-    mapping(address => ChamberLibrary.ChamberOwner) chamberOwners;
-    mapping(address => ChamberLibrary.ChamberDetails[]) private chambers;
+    mapping(address => VaultLibrary.VaultOwner) vaultOwners;
+    mapping(address => VaultLibrary.VaultDetails[]) private vaults;
 
     modifier onlyAdmin() {
         require(
@@ -34,54 +34,54 @@ contract StorageFacility is IStorageFacility {
         factory = _factory;
     }
 
-    function getChamberOwner(
+    function getVaultOwner(
         address _owner
-    ) external view override returns (ChamberLibrary.ChamberOwner memory) {
-        ChamberLibrary.ChamberOwner memory owner = chamberOwners[_owner];
+    ) external view override returns (VaultLibrary.VaultOwner memory) {
+        VaultLibrary.VaultOwner memory owner = vaultOwners[_owner];
         require(
             owner.owner != address(0),
-            "No chambers present for that address"
+            "No vaults present for that address"
         );
-        return chamberOwners[_owner];
+        return vaultOwners[_owner];
     }
 
-    function getChambers(
+    function getVaults(
         address _owner
-    ) external view override returns (ChamberLibrary.ChamberDetails[] memory) {
-        ChamberLibrary.ChamberDetails[] memory chamberDetails = chambers[
+    ) external view override returns (VaultLibrary.VaultDetails[] memory) {
+        VaultLibrary.VaultDetails[] memory vaultDetails = vaults[
             _owner
         ];
         require(
-            chamberDetails.length > 0,
-            "No chambers present for that address"
+            vaultDetails.length > 0,
+            "No vaults present for that address"
         );
-        return chamberDetails;
+        return vaultDetails;
     }
 
-    function storeChamber(
+    function storeVault(
         address _instance,
         address _owner
     ) external override onlyFactory {
-        ChamberLibrary.ChamberOwner memory owner = chamberOwners[_owner];
+        VaultLibrary.VaultOwner memory owner = vaultOwners[_owner];
         // store the owner if it is a first time user
         if (owner.owner == address(0)) {
             owner.owner = _owner;
             emit Logger(_owner, "Storing new owner");
         }
 
-        ChamberLibrary.ChamberDetails memory chamber = ChamberLibrary
-            .ChamberDetails({
+        VaultLibrary.VaultDetails memory vault = VaultLibrary
+            .VaultDetails({
                 instance: _instance,
                 owner: _owner,
                 timestamp: block.timestamp
             });
 
-        // increment the amount of chambers the owner has
+        // increment the amount of Vaults the owner has
         owner.count += 1;
-        // add the chamber details to the owners array
-        chambers[_owner].push(chamber);
+        // add the vault details to the owners array
+        vaults[_owner].push(vault);
         // update the current owner struct in the mapping
-        chamberOwners[_owner] = owner;
-        emit Logger(_instance, "Stored new chamber");
+        vaultOwners[_owner] = owner;
+        emit Logger(_instance, "Stored new vault");
     }
 }

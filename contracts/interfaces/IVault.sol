@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-interface IChamber {
+interface IVault {
     enum Status {
         ACTIVE,
         FROZEN,
@@ -28,7 +28,7 @@ interface IChamber {
         StrategyStatus status;
     }
 
-    function setChamberStatus(uint8) external;
+    function setVaultStatus(uint8) external;
 
     function setOperator(address) external;
 

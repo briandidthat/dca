@@ -1,49 +1,49 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
-const { chamberFactoryFixture, getEventObject, EVENTS } = require("./utils");
+const { vaultFactoryFixture, getEventObject, EVENTS } = require("./utils");
 
-describe("ChamberFactory", () => {
+describe("VaultFactory", () => {
   let dev, user, treasury, rando;
-  let chamber, chamberFactory;
+  let vault, vaultFactory;
 
   const ethAmount = ethers.utils.parseEther("5"); // 5 ETH
-  const chamberFee = ethers.utils.parseEther("0.05"); // 0.5 ETH
+  const vaultFee = ethers.utils.parseEther("0.05"); // 0.5 ETH
 
   beforeEach(async () => {
     [dev, user, treasury, rando] = await ethers.getSigners();
-    chamberFactory = await chamberFactoryFixture();
+    vaultFactory = await vaultFactoryFixture();
 
-    const receipt = await chamberFactory
+    const receipt = await vaultFactory
       .connect(user)
-      .deployChamber({ value: chamberFee })
+      .deployVault({ value: vaultFee })
       .then((tx) => tx.wait());
     const event = getEventObject(
-      EVENTS.chamberFactory.NEW_CHAMBER,
+      EVENTS.vaultFactory.NEW_VAULT,
       receipt.events
     );
 
-    // get the chamber we just deployed using the address from logs
-    chamber = await ethers.getContractAt("IChamber", event.args.instance);
+    // get the vault we just deployed using the address from logs
+    vault = await ethers.getContractAt("IVault", event.args.instance);
   });
   // ========================= OWNER =============================
 
-  it("deploy: Owner - Should deploy chamber with user as owner", async () => {
-    const owner = await chamber.getOwner();
+  it("deploy: Owner - Should deploy vault with user as owner", async () => {
+    const owner = await vault.getOwner();
     expect(owner).to.equal(user.address);
   });
 
-  // ========================= DEPLOY CHAMBER =============================
+  // ========================= DEPLOY VAULT =============================
 
-  it("deployChamber: Event - Should emit a NewChamber event on deployment", async () => {
+  it("deployVault: Event - Should emit a NewVault event on deployment", async () => {
     const treasuryBalanceBefore = await ethers.provider.getBalance(
       treasury.address
     );
-    const receipt = await chamberFactory
+    const receipt = await vaultFactory
       .connect(user)
-      .deployChamber({ value: chamberFee })
+      .deployVault({ value: vaultFee })
       .then((tx) => tx.wait());
 
-    const event = getEventObject("NewChamber", receipt.events);
+    const event = getEventObject("NewVault", receipt.events);
     const treasuryBalanceAfter = await ethers.provider.getBalance(
       treasury.address
     );
@@ -54,16 +54,16 @@ describe("ChamberFactory", () => {
 
   // ========================= SET FEE =============================
 
-  it("setFee: Should set new chamber deployment fee", async () => {
-    await chamberFactory.connect(dev).setFee(ethAmount);
-    let fee = await chamberFactory.getFee();
+  it("setFee: Should set new vault deployment fee", async () => {
+    await vaultFactory.connect(dev).setFee(ethAmount);
+    let fee = await vaultFactory.getFee();
 
     expect(fee).to.be.equal(ethAmount);
   });
 
   it("setFee: EVENT - Should emit FeeChanged event upon change of fee", async () => {
-    await chamberFactory.connect(dev).setFee(ethAmount);
-    let fee = await chamberFactory.getFee();
+    await vaultFactory.connect(dev).setFee(ethAmount);
+    let fee = await vaultFactory.getFee();
 
     expect(fee).to.be.equal(ethAmount);
   });
@@ -71,13 +71,13 @@ describe("ChamberFactory", () => {
   // ========================= SET TREASURY =============================
 
   it("setTreasury: Should set new treasury address", async () => {
-    const receipt = await chamberFactory
+    const receipt = await vaultFactory
       .connect(dev)
       .setTreasury(rando.address)
       .then((tx) => tx.wait());
 
     const event = getEventObject("TreasuryChange", receipt.events);
-    const treasury = await chamberFactory.getTreasury();
+    const treasury = await vaultFactory.getTreasury();
 
     expect(treasury).to.be.equal(rando.address);
     expect(event.args.treasury).to.be.eq(rando.address);
@@ -85,8 +85,8 @@ describe("ChamberFactory", () => {
 
   // ========================= GET INSTANCE COUNT =============================
 
-  it("getInstanceCount: Should return 1 as count since we deployed 1 chamber", async () => {
-    const instances = await chamberFactory.getInstanceCount();
+  it("getInstanceCount: Should return 1 as count since we deployed 1 vault", async () => {
+    const instances = await vaultFactory.getInstanceCount();
     expect(instances).to.equal(1);
   });
 });

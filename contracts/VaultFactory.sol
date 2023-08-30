@@ -1,35 +1,35 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity ^0.8.0;
 
-import "./Chamber.sol";
+import "./Vault.sol";
 import "./StorageFacility.sol";
-import "./interfaces/IChamber.sol";
-import "./interfaces/ChamberLibrary.sol";
+import "./interfaces/IVault.sol";
+import "./interfaces/VaultLibrary.sol";
 import "./interfaces/IStorageFacility.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/proxy/Clones.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract ChamberFactory is Ownable {
+contract VaultFactory is Ownable {
     address private treasury;
     address private implementation;
     uint256 private instances;
     uint256 private fee = 0.05 ether;
     address[] private deployers;
 
-    mapping(address => bool) private hasChamber;
+    mapping(address => bool) private hasVault;
 
     IStorageFacility private storageFacility =
         new StorageFacility(owner(), address(this));
 
     event FactoryLogger(address indexed instance, bytes32 data);
     event FeeChanged(uint256 previousFee, uint256 newFee);
-    event NewChamber(address indexed instance, address indexed owner);
+    event NewVault(address indexed instance, address indexed owner);
     event TreasuryChange(address indexed treasury);
 
     constructor(address _treasury) {
-        implementation = address(new Chamber());
+        implementation = address(new Vault());
         treasury = _treasury;
     }
 
@@ -38,28 +38,28 @@ contract ChamberFactory is Ownable {
         fee = _newFee;
     }
 
-    function deployChamber() external payable returns (address instance) {
-        require(msg.value >= fee, "Must pay fee to deploy chamber");
-        bool ownsChamber = hasChamber[msg.sender];
+    function deployVault() external payable returns (address instance) {
+        require(msg.value >= fee, "Must pay fee to deploy Vault");
+        bool ownsVault = hasVault[msg.sender];
 
         address clone = Clones.clone(implementation);
-        IChamber(clone).initialize(address(this), msg.sender, msg.sender);
+        IVault(clone).initialize(address(this), msg.sender, msg.sender);
 
-        emit NewChamber(clone, msg.sender);
+        emit NewVault(clone, msg.sender);
         // send fees back to treasury
         (bool success, bytes memory data) = treasury.call{value: msg.value}(
-            "chamber fees"
+            "Vault fees"
         );
 
-        require(success, ChamberLibrary.getRevertMsg(data));
+        require(success, VaultLibrary.getRevertMsg(data));
 
         instances++;
-        if (!ownsChamber) {
-            hasChamber[msg.sender] = true;
+        if (!ownsVault) {
+            hasVault[msg.sender] = true;
             deployers.push(msg.sender);
         }
 
-        storageFacility.storeChamber(clone, msg.sender);
+        storageFacility.storeVault(clone, msg.sender);
 
         emit FactoryLogger(address(this), "State has been updated");
         instance = clone;

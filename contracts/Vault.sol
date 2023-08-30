@@ -2,12 +2,12 @@
 pragma solidity ^0.8.0;
 
 import "./interfaces/IWETH.sol";
-import "./interfaces/IChamber.sol";
-import "./interfaces/ChamberLibrary.sol";
+import "./interfaces/IVault.sol";
+import "./interfaces/VaultLibrary.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 
-contract Chamber is IChamber, Initializable {
+contract Vault is IVault, Initializable {
     address private factory;
     address private owner;
     address private operator;
@@ -32,7 +32,7 @@ contract Chamber is IChamber, Initializable {
     }
 
     modifier isActive() {
-        require(status == Status.ACTIVE, "Chamber is not active");
+        require(status == Status.ACTIVE, "Vault is not active");
         _;
     }
 
@@ -62,7 +62,7 @@ contract Chamber is IChamber, Initializable {
         operator = _operator;
     }
 
-    function setChamberStatus(uint8 _status) external onlyOwner {
+    function setVaultStatus(uint8 _status) external onlyOwner {
         status = Status(_status);
     }
 
@@ -88,7 +88,7 @@ contract Chamber is IChamber, Initializable {
     }
 
     function depositETH() external payable {
-        emit Deposit(ChamberLibrary.ETH, msg.value);
+        emit Deposit(VaultLibrary.ETH, msg.value);
     }
 
     function withdraw(
@@ -112,7 +112,7 @@ contract Chamber is IChamber, Initializable {
         require(address(this).balance >= _amount, "Insufficient balance");
 
         (bool success, bytes memory data) = owner.call{value: _amount}("");
-        require(success, ChamberLibrary.getRevertMsg(data));
+        require(success, VaultLibrary.getRevertMsg(data));
 
         emit Withdraw(address(0), _amount);
 
@@ -269,7 +269,7 @@ contract Chamber is IChamber, Initializable {
             _swapCallData
         );
 
-        require(success, ChamberLibrary.getRevertMsg(data));
+        require(success, VaultLibrary.getRevertMsg(data));
 
         emit ExecuteSwap(_sellToken, _buyToken, _amount, data);
 
@@ -346,7 +346,7 @@ contract Chamber is IChamber, Initializable {
     function balanceOf(
         address _asset
     ) external view override returns (uint256) {
-        if (_asset == ChamberLibrary.ETH) {
+        if (_asset == VaultLibrary.ETH) {
             return address(this).balance;
         }
         return balances[_asset];

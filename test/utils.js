@@ -20,7 +20,7 @@ const TOKEN_DETAILS = {
 };
 
 const EVENTS = {
-  chamber: {
+  vault: {
     NEW_OPERATOR: "NewOperator",
     DEPOSIT: "Deposit",
     WITHDRAW: "Withdraw",
@@ -32,8 +32,8 @@ const EVENTS = {
     REACTIVATE_STRATEGY: "ReactivateStrategy",
     EXECUTE_SWAP: "ExecuteSwap"
   },
-  chamberFactory: {
-    NEW_CHAMBER: "NewChamber",
+  vaultFactory: {
+    NEW_VAULT: "NewVault",
     FEE_CHANGE: "FeeChange"
   }
 };
@@ -47,8 +47,8 @@ function createQueryString(url, params) {
   );
 }
 
-async function chamberLibraryFixture() {
-  const Library = await ethers.getContractFactory("ChamberLibrary");
+async function vaultLibraryFixture() {
+  const Library = await ethers.getContractFactory("VaultLibrary");
   const library = await Library.deploy();
   await library.deployed();
 
@@ -64,22 +64,22 @@ async function tokenFixture() {
   return { dai, weth, usdc, usdt };
 }
 
-async function chamberFactoryFixture() {
-  const library = await chamberLibraryFixture();
+async function vaultFactoryFixture() {
+  const library = await vaultLibraryFixture();
   const [deployer, _, treasury] = await ethers.getSigners();
 
-  const ChamberFactory = await ethers.getContractFactory("ChamberFactory", {
+  const VaultFactory = await ethers.getContractFactory("VaultFactory", {
     libraries: {
-      ChamberLibrary: library.address,
+      VaultLibrary: library.address,
     },
   });
 
-  const chamberFactory = await ChamberFactory.connect(deployer).deploy(
+  const vaultFactory = await VaultFactory.connect(deployer).deploy(
     treasury.address
   );
-  await chamberFactory.deployed();
+  await vaultFactory.deployed();
 
-  return chamberFactory;
+  return vaultFactory;
 }
 
 function getHash(...args) {
@@ -105,5 +105,5 @@ module.exports = {
   getEventObject,
   tokenFixture,
   createQueryString,
-  chamberFactoryFixture,
+  vaultFactoryFixture,
 };
