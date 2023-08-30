@@ -17,6 +17,7 @@ interface IStorageFacility {
     }
 
     event Logger(address indexed caller, bytes32 data);
+    event NewFactory(address indexed oldFactory, address indexed newFactory);
 
     function setFactoryAddress(address _factory) external;
 
@@ -25,6 +26,8 @@ interface IStorageFacility {
     function revokeAdminRights(address _admin) external;
 
     function storeVault(address _instance, address _owner) external;
+
+    function getFactoryAddress() external returns (address);
 
     function getVaultOwner(
         address _owner

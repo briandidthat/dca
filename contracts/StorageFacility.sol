@@ -28,8 +28,9 @@ contract StorageFacility is IStorageFacility, Ownable {
         _;
     }
 
-    function setFactoryAddress(address _factory) external override onlyOwner {
-        factory = _factory;
+    function setFactoryAddress(address _newFactory) external override onlyOwner {
+        emit NewFactory(factory, _newFactory);
+        factory = _newFactory;
     }
 
     function setAdmin(address _admin) external override onlyOwner {
@@ -38,6 +39,10 @@ contract StorageFacility is IStorageFacility, Ownable {
 
     function revokeAdminRights(address _admin) external override onlyOwner {
         isAdmin[_admin] = false;
+    }
+
+    function getFactoryAddress() external view override returns (address) {
+        return factory;
     }
 
     function getVaultOwner(
