@@ -5,7 +5,8 @@ const {
   WHALE,
   EVENTS,
   getHash,
-  chamberFactoryFixture,
+  vaultFactoryFixture,
+  storageFacilityFixture,
   tokenFixture,
   createQueryString,
   getEventObject,
@@ -14,9 +15,9 @@ const {
 ZEROX_URL = process.env.ZEROX_URL;
 ZEROX_API_KEY = process.env.ZEROX_API_KEY;
 
-describe("Chamber", () => {
+describe("Vault", () => {
   let accounts, whale, user, operator, attacker;
-  let chamber, chamberFactory;
+  let vault, vaultFactory;
   let weth, dai, usdc;
 
   const STRATEGY_HASH = getHash("First Strategy");
@@ -25,13 +26,15 @@ describe("Chamber", () => {
   const usdcAmount = 100n * 10n ** 6n; // 100 USDC
   const ethAmount = ethers.utils.parseEther("5"); // 5 ETH
   const daiAmount = ethers.utils.parseEther("100"); // 100 DAI
-  const chamberFee = ethers.utils.parseEther("0.05"); // 0.05 ETH
+  const vaultFee = ethers.utils.parseEther("0.05"); // 0.05 ETH
 
   axios.defaults.headers.common["0x-api-key"] = ZEROX_API_KEY;
 
   beforeEach(async () => {
-    [user, operator, attacker, ...accounts] = await ethers.getSigners();
-    chamberFactory = await chamberFactoryFixture();
+    [dev, user, operator, attacker, ...accounts] = await ethers.getSigners();
+    const storageFacility = await storageFacilityFixture();
+    vaultFactory = await vaultFactoryFixture(storageFacility.address);
+    await storageFacility.connect(dev).setFactoryAddress(vaultFactory.address);
     const tokens = await tokenFixture();
 
     dai = tokens.dai;
@@ -39,17 +42,17 @@ describe("Chamber", () => {
     usdc = tokens.usdc;
     cEth = tokens.cEth;
 
-    let receipt = await chamberFactory
+    let receipt = await vaultFactory
       .connect(user)
-      .deployChamber({ value: chamberFee })
+      .deployVault({ value: vaultFee })
       .then((tx) => tx.wait());
 
     const event = getEventObject(
-      EVENTS.chamberFactory.NEW_CHAMBER,
+      EVENTS.vaultFactory.NEW_VAULT,
       receipt.events
     );
-    // get the chamber we just deployed using the address from logs
-    chamber = await ethers.getContractAt("IChamber", event.args.instance);
+    // get the vault we just deployed using the address from logs
+    vault = await ethers.getContractAt("IVault", event.args.instance);
 
     // unlock USDC/DAI Whale account
     await network.provider.request({
@@ -63,98 +66,98 @@ describe("Chamber", () => {
     await dai.connect(whale).transfer(user.address, daiAmount);
     await usdc.connect(whale).transfer(user.address, usdcAmount);
 
-    // give approval to the chamber
-    await dai.connect(user).approve(chamber.address, daiAmount);
-    await usdc.connect(user).approve(chamber.address, usdcAmount);
+    // give approval to the Vault
+    await dai.connect(user).approve(vault.address, daiAmount);
+    await usdc.connect(user).approve(vault.address, usdcAmount);
   });
 
   // // ========================= DEPOSIT ERC20 =============================
 
-  it("deposit: Should deposit DAI into chamber and update balance", async () => {
-    await chamber.connect(user).deposit(dai.address, daiAmount);
-    let balance = await chamber.balanceOf(dai.address);
+  it("deposit: Should deposit DAI into vault and update balance", async () => {
+    await vault.connect(user).deposit(dai.address, daiAmount);
+    let balance = await vault.balanceOf(dai.address);
 
     expect(balance).to.be.equal(daiAmount);
   });
 
-  it("deposit: Should deposit USDC into chamber and update balance", async () => {
-    await chamber.connect(user).deposit(usdc.address, usdcAmount);
-    let balance = await chamber.balanceOf(usdc.address);
+  it("deposit: Should deposit USDC into vault and update balance", async () => {
+    await vault.connect(user).deposit(usdc.address, usdcAmount);
+    let balance = await vault.balanceOf(usdc.address);
 
     expect(balance).to.be.equal(usdcAmount);
   });
 
   // ========================= DEPOSIT ETH =============================
 
-  it("depositETH: Should deposit ETH into chamber and update balance", async () => {
-    await chamber.connect(user).depositETH({ value: ethAmount });
-    let balance = await ethers.provider.getBalance(chamber.address);
+  it("depositETH: Should deposit ETH into vault and update balance", async () => {
+    await vault.connect(user).depositETH({ value: ethAmount });
+    let balance = await ethers.provider.getBalance(vault.address);
 
     expect(balance).to.be.equal(ethAmount);
   });
 
   // ========================= WITHDRAW ERC20 =============================
 
-  it("withdraw: Should withdraw DAI from chamber and update balance", async () => {
-    await chamber.connect(user).deposit(dai.address, daiAmount);
-    await chamber.connect(user).withdraw(dai.address, daiAmount);
+  it("withdraw: Should withdraw DAI from vault and update balance", async () => {
+    await vault.connect(user).deposit(dai.address, daiAmount);
+    await vault.connect(user).withdraw(dai.address, daiAmount);
 
-    let balance = await chamber.balanceOf(dai.address);
+    let balance = await vault.balanceOf(dai.address);
 
     expect(balance).to.be.equal(0);
   });
 
-  it("withdraw: Should withdraw USDC from chamber and update balance", async () => {
-    await chamber.connect(user).deposit(usdc.address, usdcAmount);
-    await chamber.connect(user).withdraw(usdc.address, usdcAmount);
+  it("withdraw: Should withdraw USDC from vault and update balance", async () => {
+    await vault.connect(user).deposit(usdc.address, usdcAmount);
+    await vault.connect(user).withdraw(usdc.address, usdcAmount);
 
-    let balance = await chamber.balanceOf(usdc.address);
+    let balance = await vault.balanceOf(usdc.address);
 
     expect(balance).to.be.equal(0);
   });
 
   it("withdraw: Should revert due to caller not being owner", async () => {
-    await chamber.connect(user).deposit(usdc.address, usdcAmount);
+    await vault.connect(user).deposit(usdc.address, usdcAmount);
     await expect(
-      chamber.connect(attacker).withdraw(usdc.address, usdcAmount)
+      vault.connect(attacker).withdraw(usdc.address, usdcAmount)
     ).to.be.revertedWith("Restricted to Owner");
   });
 
   // ========================= WITHDRAW ETH =============================
 
-  it("withdrawETH: Should withdraw ETH from chamber", async () => {
-    await user.sendTransaction({ to: chamber.address, value: ethAmount });
+  it("withdrawETH: Should withdraw ETH from vault", async () => {
+    await user.sendTransaction({ to: vault.address, value: ethAmount });
 
     let userBalanceBefore = await ethers.provider.getBalance(user.address);
-    let chamberBalanceBefore = await ethers.provider.getBalance(
-      chamber.address
+    let vaultBalanceBefore = await ethers.provider.getBalance(
+      vault.address
     );
 
-    await chamber.connect(user).withdrawETH(ethAmount);
+    await vault.connect(user).withdrawETH(ethAmount);
 
     let userBalanceAfter = await ethers.provider.getBalance(user.address);
-    let chamberBalanceAfter = await ethers.provider.getBalance(chamber.address);
+    let vaultBalanceAfter = await ethers.provider.getBalance(vault.address);
 
-    expect(chamberBalanceBefore).to.be.equal(ethAmount);
-    expect(chamberBalanceAfter).to.be.equal(0);
+    expect(vaultBalanceBefore).to.be.equal(ethAmount);
+    expect(vaultBalanceAfter).to.be.equal(0);
     expect(userBalanceAfter).to.be.gt(userBalanceBefore);
   });
 
   it("withdrawETH: Should revert due to caller not being owner", async () => {
-    await user.sendTransaction({ to: chamber.address, value: ethAmount });
+    await user.sendTransaction({ to: vault.address, value: ethAmount });
 
     await expect(
-      chamber.connect(attacker).withdrawETH(ethAmount)
+      vault.connect(attacker).withdrawETH(ethAmount)
     ).to.be.revertedWith("Restricted to Owner");
   });
 
   // ========================= WRAP ETH =============================
   it("wrapETH: Should wrap ETH and update WETH Balance", async () => {
-    await chamber.connect(user).depositETH({ value: ethAmount });
-    await chamber.connect(user).wrapETH(ethAmount);
+    await vault.connect(user).depositETH({ value: ethAmount });
+    await vault.connect(user).wrapETH(ethAmount);
 
-    const wethBalance = await weth.balanceOf(chamber.address);
-    const ethBalance = await ethers.provider.getBalance(chamber.address);
+    const wethBalance = await weth.balanceOf(vault.address);
+    const ethBalance = await ethers.provider.getBalance(vault.address);
 
     expect(wethBalance).to.be.equal(ethAmount);
     expect(ethBalance).to.be.equal(0);
@@ -162,12 +165,12 @@ describe("Chamber", () => {
 
   // ========================= UNWRAP ETH =============================
   it("unwrapETH: Should unwrap ETH and update WETH Balance", async () => {
-    await chamber.connect(user).depositETH({ value: ethAmount });
-    await chamber.connect(user).wrapETH(ethAmount);
-    await chamber.connect(user).unwrapETH(ethAmount);
+    await vault.connect(user).depositETH({ value: ethAmount });
+    await vault.connect(user).wrapETH(ethAmount);
+    await vault.connect(user).unwrapETH(ethAmount);
 
-    const wethBalance = await weth.balanceOf(chamber.address);
-    const ethBalance = await ethers.provider.getBalance(chamber.address);
+    const wethBalance = await weth.balanceOf(vault.address);
+    const ethBalance = await ethers.provider.getBalance(vault.address);
 
     expect(wethBalance).to.be.equal(0);
     expect(ethBalance).to.be.equal(ethAmount);
@@ -176,7 +179,7 @@ describe("Chamber", () => {
   // ========================= EXECUTE SWAP =============================
 
   it("executeSwap: Should swap DAI to WETH using 0x liquidity", async () => {
-    await chamber.connect(user).deposit(dai.address, daiAmount);
+    await vault.connect(user).deposit(dai.address, daiAmount);
 
     const url = createQueryString(ZEROX_URL, {
       sellToken: "DAI",
@@ -189,7 +192,7 @@ describe("Chamber", () => {
 
     await dai.connect(user).approve(quote.allowanceTarget, quote.sellAmount);
 
-    let receipt = await chamber
+    let receipt = await vault
       .connect(user)
       .executeSwap(
         quote.sellTokenAddress,
@@ -201,20 +204,20 @@ describe("Chamber", () => {
       )
       .then((tx) => tx.wait());
 
-    const event = getEventObject(EVENTS.chamber.EXECUTE_SWAP, receipt.events);
+    const event = getEventObject(EVENTS.vault.EXECUTE_SWAP, receipt.events);
 
-    const chamberWethBalance = await weth.balanceOf(chamber.address);
-    const chamberBalance = await chamber.balanceOf(weth.address);
+    const vaultWethBalance = await weth.balanceOf(vault.address);
+    const vaultBalance = await vault.balanceOf(weth.address);
 
-    expect(chamberWethBalance).to.be.gt(0);
-    expect(chamberBalance).to.be.equal(chamberWethBalance);
+    expect(vaultWethBalance).to.be.gt(0);
+    expect(vaultBalance).to.be.equal(vaultWethBalance);
     expect(event.args.sellToken).to.be.equal(dai.address);
     expect(event.args.buyToken).to.be.equal(weth.address);
     expect(event.args.amount).to.be.equal(daiAmount);
   });
 
   it("executeSwap: Should swap USDC to WETH using 0x liquidity", async () => {
-    await chamber.connect(user).deposit(usdc.address, usdcAmount);
+    await vault.connect(user).deposit(usdc.address, usdcAmount);
     const url = createQueryString(ZEROX_URL, {
       sellToken: "USDC",
       buyToken: "WETH",
@@ -224,7 +227,7 @@ describe("Chamber", () => {
     const response = await axios.get(url);
     const quote = response.data;
 
-    const receipt = await chamber
+    const receipt = await vault
       .connect(user)
       .executeSwap(
         quote.sellTokenAddress,
@@ -236,23 +239,23 @@ describe("Chamber", () => {
       )
       .then((tx) => tx.wait());
 
-    const event = getEventObject(EVENTS.chamber.EXECUTE_SWAP, receipt.events);
+    const event = getEventObject(EVENTS.vault.EXECUTE_SWAP, receipt.events);
 
-    const chamberWethBalance = await weth.balanceOf(chamber.address);
-    const chamberBalance = await chamber.balanceOf(weth.address);
+    const vaultWethBalance = await weth.balanceOf(vault.address);
+    const vaultBalance = await vault.balanceOf(weth.address);
 
-    expect(chamberWethBalance).to.be.gt(0);
-    expect(chamberBalance).to.be.equal(chamberWethBalance);
+    expect(vaultWethBalance).to.be.gt(0);
+    expect(vaultBalance).to.be.equal(vaultWethBalance);
     expect(event.args.sellToken).to.be.equal(usdc.address);
     expect(event.args.buyToken).to.be.equal(weth.address);
-    expect(event.args.amount).to.be.equal(usdcAmount); 
+    expect(event.args.amount).to.be.equal(usdcAmount);
   });
 
   it("executeSwap: Should swap WETH to USDC using 0x liquidity", async () => {
-    await chamber.connect(user).depositETH({ value: ethAmount });
+    await vault.connect(user).depositETH({ value: ethAmount });
 
     const sellAmount = ethers.utils.parseEther("1");
-    await chamber.connect(user).wrapETH(sellAmount);
+    await vault.connect(user).wrapETH(sellAmount);
 
     const url = createQueryString(ZEROX_URL, {
       sellToken: "WETH",
@@ -263,7 +266,7 @@ describe("Chamber", () => {
     const response = await axios.get(url);
     const quote = response.data;
 
-    const receipt = await chamber
+    const receipt = await vault
       .connect(user)
       .executeSwap(
         quote.sellTokenAddress,
@@ -275,9 +278,9 @@ describe("Chamber", () => {
       )
       .then((tx) => tx.wait());
 
-    const event = getEventObject(EVENTS.chamber.EXECUTE_SWAP, receipt.events);
-    const usdcBalance = await usdc.balanceOf(chamber.address);
-    const ethBalance = await ethers.provider.getBalance(chamber.address);
+    const event = getEventObject(EVENTS.vault.EXECUTE_SWAP, receipt.events);
+    const usdcBalance = await usdc.balanceOf(vault.address);
+    const ethBalance = await ethers.provider.getBalance(vault.address);
 
     expect(usdcBalance).to.be.gt(0);
     expect(ethBalance).to.be.gt(sellAmount);
@@ -289,16 +292,16 @@ describe("Chamber", () => {
   // ========================= CREATE STRATEGY =============================
 
   it("createStrategy: Should create a strategy and log the strategy id", async () => {
-    await chamber.connect(user).deposit(dai.address, daiAmount);
+    await vault.connect(user).deposit(dai.address, daiAmount);
 
     const frequency = 7;
 
-    let receipt = await chamber
+    let receipt = await vault
       .connect(user)
       .createStrategy(STRATEGY_HASH, weth.address, dai.address, daiAmount, frequency)
       .then((tx) => tx.wait());
 
-    const event = getEventObject(EVENTS.chamber.NEW_STRATEGY, receipt.events);
+    const event = getEventObject(EVENTS.vault.NEW_STRATEGY, receipt.events);
 
     expect(event.args.hashId).to.be.equal(STRATEGY_HASH);
     expect(event.args.amount).to.be.equal(daiAmount);
@@ -309,17 +312,17 @@ describe("Chamber", () => {
 
   it("updateStrategy: Should update the strategy at the given hash if found", async () => {
     const frequency = 1;
-    await chamber.connect(user).deposit(usdc.address, usdcAmount);
+    await vault.connect(user).deposit(usdc.address, usdcAmount);
 
-    await chamber
+    await vault
       .connect(user)
       .createStrategy(STRATEGY_HASH, weth.address, usdc.address, usdcAmount, frequency);
 
-    const strategy = await chamber.connect(user).getStrategy(STRATEGY_HASH);
+    const strategy = await vault.connect(user).getStrategy(STRATEGY_HASH);
     const updatedFrequency = 10;
     const updatedAmount = usdcAmount + usdcAmount;
 
-    const receipt = await chamber
+    const receipt = await vault
       .connect(user)
       .updateStrategy({
         idx: strategy.idx,
@@ -335,9 +338,9 @@ describe("Chamber", () => {
       })
       .then((tx) => tx.wait());
 
-    const event = getEventObject(EVENTS.chamber.UPDATE_STRATEGY, receipt.events);
+    const event = getEventObject(EVENTS.vault.UPDATE_STRATEGY, receipt.events);
 
-    const updatedStrategy = await chamber
+    const updatedStrategy = await vault
       .connect(user)
       .getStrategy(strategy.hashId);
 
@@ -349,19 +352,19 @@ describe("Chamber", () => {
   // ========================= DEPRECATE STRATEGY =============================
 
   it("deprecateStrategy: Should deprecate the strategy at the given hash if found", async () => {
-    await chamber.connect(user).deposit(usdc.address, usdcAmount);
-    await chamber
+    await vault.connect(user).deposit(usdc.address, usdcAmount);
+    await vault
       .connect(user)
       .createStrategy(STRATEGY_HASH, weth.address, usdc.address, usdcAmount, 1);
 
-    const receipt = await chamber
+    const receipt = await vault
       .connect(user)
       .deprecateStrategy(STRATEGY_HASH)
       .then((tx) => tx.wait());
 
-    const event = getEventObject(EVENTS.chamber.DEPRECATE_STRATEGY, receipt.events);
-    const deprecatedStrategy = await chamber.connect(user).getStrategy(STRATEGY_HASH);
-    const activeStrategies = await chamber.getActiveStrategies();
+    const event = getEventObject(EVENTS.vault.DEPRECATE_STRATEGY, receipt.events);
+    const deprecatedStrategy = await vault.connect(user).getStrategy(STRATEGY_HASH);
+    const activeStrategies = await vault.getActiveStrategies();
 
     expect(deprecatedStrategy.status).to.be.equal(1); // 1 == DEACTIVATED
     expect(activeStrategies.length).to.be.equal(0); // should be 0 active strats
@@ -371,22 +374,22 @@ describe("Chamber", () => {
   // ========================= DELETE STRATEGY ================================
 
   it("deleteStrategy: Should create another strategy at same hash after deleting", async () => {
-    await chamber.connect(user).deposit(usdc.address, usdcAmount);
-    await chamber
+    await vault.connect(user).deposit(usdc.address, usdcAmount);
+    await vault
       .connect(user)
       .createStrategy(STRATEGY_HASH, weth.address, usdc.address, usdcAmount, 1);
     // delete the strategy we just created
-    const receipt = await chamber
+    const receipt = await vault
       .connect(user)
       .deleteStrategy(STRATEGY_HASH)
       .then((tx) => tx.wait());
-    const event = getEventObject(EVENTS.chamber.DELETE_STRATEGY, receipt.events);
+    const event = getEventObject(EVENTS.vault.DELETE_STRATEGY, receipt.events);
     // create another strategy at the same hash
-    await chamber
+    await vault
       .connect(user)
       .createStrategy(STRATEGY_HASH, weth.address, usdc.address, usdcAmount, 7);
     // get all strategies, should be only 1
-    const strategies = await chamber.getStrategies();
+    const strategies = await vault.getStrategies();
 
     expect(strategies.length).to.be.equal(1); // should be 1 active strategy
     expect(event.args.hashId).to.be.equal(STRATEGY_HASH);
@@ -395,8 +398,8 @@ describe("Chamber", () => {
   // ========================= EXECUTE STRATEGY =============================
 
   it("executeStrategy: Should execute strategy by owner", async () => {
-    await chamber.connect(user).deposit(usdc.address, usdcAmount);
-    await chamber
+    await vault.connect(user).deposit(usdc.address, usdcAmount);
+    await vault
       .connect(user)
       .createStrategy(STRATEGY_HASH, weth.address, usdc.address, usdcAmount, 7);
 
@@ -409,15 +412,15 @@ describe("Chamber", () => {
 
     const quote = response.data;
 
-    const receipt = await chamber
+    const receipt = await vault
       .connect(user)
       .executeStrategy(STRATEGY_HASH, quote.allowanceTarget, quote.to, quote.data)
       .then((tx) => tx.wait());
 
-    const event = getEventObject(EVENTS.chamber.EXECUTE_STRATEGY, receipt.events);
+    const event = getEventObject(EVENTS.vault.EXECUTE_STRATEGY, receipt.events);
 
-    const strategy = await chamber.getStrategy(STRATEGY_HASH);
-    const balance = await weth.balanceOf(chamber.address);
+    const strategy = await vault.getStrategy(STRATEGY_HASH);
+    const balance = await weth.balanceOf(vault.address);
 
     expect(balance).to.be.gt(0);
     expect(strategy.lastSwap).to.be.gt(0);
@@ -426,9 +429,9 @@ describe("Chamber", () => {
   });
 
   it("executeStrategy: Should execute strategy by operator", async () => {
-    await chamber.connect(user).deposit(usdc.address, usdcAmount);
-    await chamber.connect(user).setOperator(operator.address);
-    await chamber
+    await vault.connect(user).deposit(usdc.address, usdcAmount);
+    await vault.connect(user).setOperator(operator.address);
+    await vault
       .connect(user)
       .createStrategy(STRATEGY_HASH, weth.address, usdc.address, usdcAmount, 7);
 
@@ -441,15 +444,15 @@ describe("Chamber", () => {
 
     const quote = response.data;
 
-    const receipt = await chamber
+    const receipt = await vault
       .connect(operator)
       .executeStrategy(STRATEGY_HASH, quote.allowanceTarget, quote.to, quote.data)
       .then((tx) => tx.wait());
 
-    const event = getEventObject(EVENTS.chamber.EXECUTE_STRATEGY, receipt.events);
+    const event = getEventObject(EVENTS.vault.EXECUTE_STRATEGY, receipt.events);
 
-    const strategy = await chamber.getStrategy(STRATEGY_HASH);
-    const balance = await weth.balanceOf(chamber.address);
+    const strategy = await vault.getStrategy(STRATEGY_HASH);
+    const balance = await weth.balanceOf(vault.address);
 
     expect(balance).to.be.gt(0);
     expect(strategy.lastSwap).to.be.gt(0);
@@ -457,23 +460,23 @@ describe("Chamber", () => {
   });
 
   // ========================= SET STATUS =============================
-  it("setStatus: Should set the chamber status to DEPRECATED", async () => {
-    await chamber.connect(user).setChamberStatus(2);
-    let status = await chamber.connect(user).getStatus();
+  it("setStatus: Should set the vault status to DEPRECATED", async () => {
+    await vault.connect(user).setVaultStatus(2);
+    let status = await vault.connect(user).getStatus();
 
     expect(status).to.be.equal(2);
   });
 
   // ========================= SET OPERATOR =============================
   it("setOperator: Should set the operator address", async () => {
-    let tx = await chamber
+    let tx = await vault
       .connect(user)
       .setOperator(operator.address)
       .then((tx) => tx.wait());
 
-    const event = getEventObject(EVENTS.chamber.NEW_OPERATOR, tx.events);
+    const event = getEventObject(EVENTS.vault.NEW_OPERATOR, tx.events);
 
-    const operatorAddr = await chamber.getOperator();
+    const operatorAddr = await vault.getOperator();
     expect(operatorAddr).to.be.equal(operator.address);
     expect(event.args.operator).to.be.equal(operatorAddr);
   });
@@ -481,17 +484,17 @@ describe("Chamber", () => {
   // ========================= BALANCE OF =============================
 
   it("balanceOf: Should return a balance of 50 DAI and 50 USDC", async () => {
-    await chamber.connect(user).deposit(dai.address, daiAmount);
-    await chamber.connect(user).deposit(usdc.address, usdcAmount);
+    await vault.connect(user).deposit(dai.address, daiAmount);
+    await vault.connect(user).deposit(usdc.address, usdcAmount);
 
     const usdcWithdrawal = 50n * 10n ** 6n;
     const daiWithdrawal = ethers.utils.parseEther("50");
 
-    await chamber.connect(user).withdraw(dai.address, daiWithdrawal);
-    await chamber.connect(user).withdraw(usdc.address, usdcWithdrawal);
+    await vault.connect(user).withdraw(dai.address, daiWithdrawal);
+    await vault.connect(user).withdraw(usdc.address, usdcWithdrawal);
 
-    let daiBalance = await chamber.balanceOf(dai.address);
-    let usdcBalance = await chamber.balanceOf(usdc.address);
+    let daiBalance = await vault.balanceOf(dai.address);
+    let usdcBalance = await vault.balanceOf(usdc.address);
 
     expect(daiBalance).to.be.equal(daiWithdrawal);
     expect(usdcBalance).to.be.equal(usdcWithdrawal);
@@ -500,13 +503,13 @@ describe("Chamber", () => {
   // ========================= GET STRATEGY =============================
   it("getStrategy: Should return the strategy at the given hash if found", async () => {
     const frequency = 1;
-    await chamber.connect(user).deposit(usdc.address, usdcAmount);
+    await vault.connect(user).deposit(usdc.address, usdcAmount);
 
-    await chamber
+    await vault
       .connect(user)
       .createStrategy(STRATEGY_HASH, weth.address, usdc.address, usdcAmount, frequency);
 
-    const strategy = await chamber.connect(user).getStrategy(STRATEGY_HASH);
+    const strategy = await vault.connect(user).getStrategy(STRATEGY_HASH);
 
     expect(strategy.hashId).to.be.equal(STRATEGY_HASH);
     expect(strategy.lastSwap).to.be.equal(0);
@@ -516,19 +519,19 @@ describe("Chamber", () => {
 
   // ========================= GET ALL STRATEGIES =============================
   it("getStrategies: Should return a list of Strategies containing 2 strategies", async () => {
-    await chamber.connect(user).deposit(dai.address, daiAmount);
-    await chamber.connect(user).deposit(usdc.address, usdcAmount);
+    await vault.connect(user).deposit(dai.address, daiAmount);
+    await vault.connect(user).deposit(usdc.address, usdcAmount);
 
     const frequency = 7;
-    await chamber
+    await vault
       .connect(user)
       .createStrategy(STRATEGY_HASH, weth.address, dai.address, daiAmount, frequency);
 
-    await chamber
+    await vault
       .connect(user)
       .createStrategy(STRATEGY2_HASH, weth.address, usdc.address, usdcAmount, frequency);
 
-    const strategies = await chamber.connect(user).getStrategies();
+    const strategies = await vault.connect(user).getStrategies();
     const strategy = strategies[0];
 
     expect(strategies.length).to.be.equal(2);
@@ -538,33 +541,33 @@ describe("Chamber", () => {
 
   // ========================= GET ACTIVE STRATEGIES =============================
   it("getActiveStrategies: Should return a list of active strategies", async () => {
-    await chamber.connect(user).deposit(usdc.address, usdcAmount);
-    await chamber.connect(user).deposit(dai.address, daiAmount);
+    await vault.connect(user).deposit(usdc.address, usdcAmount);
+    await vault.connect(user).deposit(dai.address, daiAmount);
 
-    await chamber
+    await vault
       .connect(user)
       .createStrategy(STRATEGY_HASH, weth.address, usdc.address, usdcAmount, 1); // 1 strategy
-    await chamber
+    await vault
       .connect(user)
       .createStrategy(STRATEGY2_HASH, weth.address, dai.address, daiAmount, 1); // 2nd strategy
 
-    await chamber.connect(user).deprecateStrategy(STRATEGY_HASH);
+    await vault.connect(user).deprecateStrategy(STRATEGY_HASH);
 
-    const activeStrategies = await chamber.getActiveStrategies();
+    const activeStrategies = await vault.getActiveStrategies();
 
     expect(activeStrategies.length).to.be.equal(1); // should be 1 active strats
   });
 
   // ========================= GET OWNER =============================
-  it("getOwner: Should return the chamber owner address", async () => {
-    const owner = await chamber.getOwner();
+  it("getOwner: Should return the vault owner address", async () => {
+    const owner = await vault.getOwner();
     expect(owner).to.be.equal(user.address);
   });
 
   // ========================= GET FACTORY =============================
 
-  it("getFactory: Should return the ChamberFactory address", async () => {
-    const factory = await chamber.getFactory();
-    expect(factory).to.be.equal(chamberFactory.address);
+  it("getFactory: Should return the vaultFactory address", async () => {
+    const factory = await vault.getFactory();
+    expect(factory).to.be.equal(vaultFactory.address);
   });
 });

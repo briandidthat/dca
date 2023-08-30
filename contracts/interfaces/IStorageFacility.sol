@@ -1,18 +1,29 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity ^0.8.0;
 
-import "../Chamber.sol";
-import "./ChamberLibrary.sol";
+import "./VaultLibrary.sol";
 
 interface IStorageFacility {
+    struct VaultOwner {
+        address owner;
+        uint8 count;
+    }
 
-    function storeChamber(address _instance, address _owner) external;
+    struct VaultDetails {
+        address instance;
+        address owner;
+        uint256 timestamp;
+    }
 
-    function getChamberOwner(
+    function setFactoryAddress(address _factory) external;
+
+    function storeVault(address _instance, address _owner) external;
+
+    function getVaultOwner(
         address _owner
-    ) external view returns (ChamberLibrary.ChamberOwner memory);
+    ) external view returns (VaultOwner memory);
 
-    function getChambers(
+    function getVaults(
         address _owner
-    ) external view returns (ChamberLibrary.ChamberDetails[] memory);
+    ) external view returns (VaultDetails[] memory);
 }
