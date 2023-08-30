@@ -6,6 +6,7 @@ const {
   EVENTS,
   getHash,
   vaultFactoryFixture,
+  storageFacilityFixture,
   tokenFixture,
   createQueryString,
   getEventObject,
@@ -30,8 +31,10 @@ describe("Vault", () => {
   axios.defaults.headers.common["0x-api-key"] = ZEROX_API_KEY;
 
   beforeEach(async () => {
-    [user, operator, attacker, ...accounts] = await ethers.getSigners();
-    vaultFactory = await vaultFactoryFixture();
+    [dev, user, operator, attacker, ...accounts] = await ethers.getSigners();
+    const storageFacility = await storageFacilityFixture();
+    vaultFactory = await vaultFactoryFixture(storageFacility.address);
+    await storageFacility.connect(dev).setFactoryAddress(vaultFactory.address);
     const tokens = await tokenFixture();
 
     dai = tokens.dai;
@@ -245,7 +248,7 @@ describe("Vault", () => {
     expect(vaultBalance).to.be.equal(vaultWethBalance);
     expect(event.args.sellToken).to.be.equal(usdc.address);
     expect(event.args.buyToken).to.be.equal(weth.address);
-    expect(event.args.amount).to.be.equal(usdcAmount); 
+    expect(event.args.amount).to.be.equal(usdcAmount);
   });
 
   it("executeSwap: Should swap WETH to USDC using 0x liquidity", async () => {

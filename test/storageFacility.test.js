@@ -1,16 +1,18 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
-const { vaultFactoryFixture, getEventObject, EVENTS } = require("./utils");
+const { vaultFactoryFixture, storageFacilityFixture, getEventObject, EVENTS } = require("./utils");
 
 
 describe("StorageFacility", () => {
     let dev, user, treasury, rando;
-    let vault, vaultFactory;
+    let vault, vaultFactory, storageFacility;
     const vaultFee = ethers.utils.parseEther("0.05"); // 0.5 ETH
 
     beforeEach(async () => {
         [dev, user, treasury, rando] = await ethers.getSigners();
-        vaultFactory = await vaultFactoryFixture();
+        storageFacility = await storageFacilityFixture();
+        vaultFactory = await vaultFactoryFixture(storageFacility.address);
+        await storageFacility.connect(dev).setFactoryAddress(vaultFactory.address);
 
         const receipt = await vaultFactory
             .connect(user)
@@ -21,12 +23,8 @@ describe("StorageFacility", () => {
             receipt.events
         );
 
-        // get the address of the new storage facility deployed by the vault factory
-        const storageFacilityAddress = await vaultFactory.getStorageAddress();
-
         // get the vault we just deployed using the address from logs
         vault = await ethers.getContractAt("IVault", event.args.instance);
-        storageFacility = await ethers.getContractAt("IStorageFacility", storageFacilityAddress);
     });
 
     // ========================= GET VAULT OWNER =============================

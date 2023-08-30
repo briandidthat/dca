@@ -64,7 +64,7 @@ async function tokenFixture() {
   return { dai, weth, usdc, usdt };
 }
 
-async function vaultFactoryFixture() {
+async function vaultFactoryFixture(storageFacility) {
   const library = await vaultLibraryFixture();
   const [deployer, _, treasury] = await ethers.getSigners();
 
@@ -75,11 +75,21 @@ async function vaultFactoryFixture() {
   });
 
   const vaultFactory = await VaultFactory.connect(deployer).deploy(
-    treasury.address
+    treasury.address,
+    storageFacility
   );
   await vaultFactory.deployed();
 
   return vaultFactory;
+}
+
+async function storageFacilityFixture() {
+  const [deployer] = await ethers.getSigners();
+
+  const StorageFacility = await ethers.getContractFactory("StorageFacility");
+  const storageFacility = await StorageFacility.deploy();
+  await storageFacility.deployed();
+  return storageFacility;
 }
 
 function getHash(...args) {
@@ -106,4 +116,5 @@ module.exports = {
   tokenFixture,
   createQueryString,
   vaultFactoryFixture,
+  storageFacilityFixture
 };

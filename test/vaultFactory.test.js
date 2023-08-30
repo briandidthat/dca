@@ -1,6 +1,6 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
-const { vaultFactoryFixture, getEventObject, EVENTS } = require("./utils");
+const { vaultFactoryFixture, getEventObject, EVENTS, storageFacilityFixture } = require("./utils");
 
 describe("VaultFactory", () => {
   let dev, user, treasury, rando;
@@ -11,7 +11,9 @@ describe("VaultFactory", () => {
 
   beforeEach(async () => {
     [dev, user, treasury, rando] = await ethers.getSigners();
-    vaultFactory = await vaultFactoryFixture();
+    const storageFacility = await storageFacilityFixture();
+    vaultFactory = await vaultFactoryFixture(storageFacility.address);
+    await storageFacility.connect(dev).setFactoryAddress(vaultFactory.address);
 
     const receipt = await vaultFactory
       .connect(user)

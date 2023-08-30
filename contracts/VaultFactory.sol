@@ -20,17 +20,17 @@ contract VaultFactory is Ownable {
 
     mapping(address => bool) private hasVault;
 
-    IStorageFacility private storageFacility =
-        new StorageFacility(owner(), address(this));
+    IStorageFacility private storageFacility;
 
     event FactoryLogger(address indexed instance, bytes32 data);
     event FeeChanged(uint256 previousFee, uint256 newFee);
     event NewVault(address indexed instance, address indexed owner);
     event TreasuryChange(address indexed treasury);
 
-    constructor(address _treasury) {
+    constructor(address _treasury, address _storageFacility) {
         implementation = address(new Vault());
         treasury = _treasury;
+        storageFacility = IStorageFacility(_storageFacility);
     }
 
     function setFee(uint256 _newFee) external onlyOwner {
