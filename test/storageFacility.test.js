@@ -4,12 +4,12 @@ const { vaultFactoryFixture, storageFacilityFixture, getEventObject, EVENTS } = 
 
 
 describe("StorageFacility", () => {
-    let dev, user, treasury, rando;
+    let dev, user, rando;
     let vault, vaultFactory, storageFacility;
     const vaultFee = ethers.utils.parseEther("0.05"); // 0.5 ETH
 
     beforeEach(async () => {
-        [dev, user, treasury, rando] = await ethers.getSigners();
+        [dev, user, rando] = await ethers.getSigners();
         storageFacility = await storageFacilityFixture();
         vaultFactory = await vaultFactoryFixture(storageFacility.address);
         await storageFacility.connect(dev).setFactoryAddress(vaultFactory.address);
@@ -64,5 +64,26 @@ describe("StorageFacility", () => {
             "This function can only be called by the factory contract"
         );
     })
+
+    // ========================= SET FACTORY ADDRESS =============================
+
+    it("setFactoryAddress: Should set new vault factory address", async () => {
+        storageFacility = await storageFacilityFixture();
+        vaultFactory = await vaultFactoryFixture(storageFacility.address);
+        const receipt = await storageFacility.connect(dev).setFactoryAddress(vaultFactory.address).then((tx) => tx.wait());
+
+        const event = getEventObject(EVENTS.storageFacility.NEW_FACTORY, receipt.events);
+        const factoryAddress = await storageFacility.getFactoryAddress();
+
+        expect(event.args.oldFactory).to.be.equal(ethers.constants.AddressZero);
+        expect(event.args.newFactory).to.be.equal(vaultFactory.address);
+        expect(factoryAddress).to.be.equal(vaultFactory.address);
+    })
+
+    it("setFactoryAddress: Revert - Should revert due to not being called by the owner", async () => {
+        await expect(storageFacility.connect(user).setFactoryAddress(rando.address)).to.be.revertedWith(
+            "caller is not the owner"
+        );
+    });
 
 })

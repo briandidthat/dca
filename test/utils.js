@@ -35,6 +35,10 @@ const EVENTS = {
   vaultFactory: {
     NEW_VAULT: "NewVault",
     FEE_CHANGE: "FeeChange"
+  },
+  storageFacility: {
+    LOGGER: "Logger",
+    NEW_FACTORY: "NewFactory"
   }
 };
 
@@ -87,7 +91,7 @@ async function storageFacilityFixture() {
   const [deployer] = await ethers.getSigners();
 
   const StorageFacility = await ethers.getContractFactory("StorageFacility");
-  const storageFacility = await StorageFacility.deploy();
+  const storageFacility = await StorageFacility.connect(deployer).deploy();
   await storageFacility.deployed();
   return storageFacility;
 }

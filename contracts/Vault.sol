@@ -192,7 +192,6 @@ contract Vault is IVault, Initializable {
         }
 
         delete strategies[_hash];
-        delete strategyHashes[strategy.idx];
         emit DeleteStrategy(_hash);
     }
 

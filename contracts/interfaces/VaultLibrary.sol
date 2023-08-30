@@ -8,17 +8,6 @@ library VaultLibrary {
     address public constant USDT = 0xdAC17F958D2ee523a2206206994597C13D831ec7;
     address public constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
 
-    struct VaultOwner {
-        address owner;
-        uint8 count;
-    }
-
-    struct VaultDetails {
-        address instance;
-        address owner;
-        uint256 timestamp;
-    }
-
     function getRevertMsg(
         bytes memory _returnData
     ) external pure returns (string memory) {
