@@ -4,7 +4,6 @@ pragma solidity ^0.8.0;
 import "./Vault.sol";
 import "./StorageFacility.sol";
 import "./interfaces/IVault.sol";
-import "./interfaces/VaultLibrary.sol";
 import "./interfaces/IStorageFacility.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/proxy/Clones.sol";
