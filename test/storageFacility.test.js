@@ -30,6 +30,7 @@ describe("StorageFacility", () => {
     });
 
     // ========================= GET CHAMBER OWNER =============================
+
     it("getChamberOwner: Should return the chamber owners details", async () => {
         const details = await storageFacility.getChamberOwner(user.address);
 
@@ -59,9 +60,10 @@ describe("StorageFacility", () => {
     });
 
     // ========================= STORE CHAMBER =============================
+
     it("storeChamber: Revert - Should revert due to being called by somebody other than factory", async () => {
         await expect(storageFacility.connect(dev).storeChamber(rando.address, dev.address)).to.be.revertedWith(
-            "This operation can only be called by the factory contract"
+            "This function can only be called by the factory contract"
         );
     })
 

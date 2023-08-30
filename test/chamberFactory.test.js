@@ -4,7 +4,7 @@ const { chamberFactoryFixture, getEventObject, EVENTS } = require("./utils");
 
 describe("ChamberFactory", () => {
   let dev, user, treasury, rando;
-  let chamber, chamberFactory, storageFacility;
+  let chamber, chamberFactory;
 
   const ethAmount = ethers.utils.parseEther("5"); // 5 ETH
   const chamberFee = ethers.utils.parseEther("0.05"); // 0.5 ETH

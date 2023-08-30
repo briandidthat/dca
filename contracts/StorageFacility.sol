@@ -8,7 +8,7 @@ contract StorageFacility is IStorageFacility {
     address private admin;
     address private factory;
 
-    event Logger(address indexed currentCaller, bytes32 data);
+    event Logger(address indexed caller, bytes32 data);
 
     mapping(address => ChamberLibrary.ChamberOwner) chamberOwners;
     mapping(address => ChamberLibrary.ChamberDetails[]) private chambers;
@@ -16,7 +16,7 @@ contract StorageFacility is IStorageFacility {
     modifier onlyAdmin() {
         require(
             msg.sender == admin,
-            "This operation can only be called by an admin"
+            "This function can only be called by an admin"
         );
         _;
     }
@@ -24,7 +24,7 @@ contract StorageFacility is IStorageFacility {
     modifier onlyFactory() {
         require(
             msg.sender == factory,
-            "This operation can only be called by the factory contract"
+            "This function can only be called by the factory contract"
         );
         _;
     }

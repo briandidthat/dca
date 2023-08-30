@@ -21,7 +21,7 @@ contract ChamberFactory is Ownable {
     mapping(address => bool) private hasChamber;
 
     IStorageFacility private storageFacility =
-        new StorageFacility(treasury, address(this));
+        new StorageFacility(owner(), address(this));
 
     event FactoryLogger(address indexed instance, bytes32 data);
     event FeeChanged(uint256 previousFee, uint256 newFee);
