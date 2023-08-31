@@ -135,9 +135,10 @@ contract Vault is IVault, Initializable {
             "Insufficient funds for Strategy"
         );
 
-        if (strategies[_hashId].sellToken != address(0)) {
-            revert("Strategy for that pair already exists");
-        }
+        require(
+            strategies[_hashId].sellToken == address(0),
+            "Strategy with that name already exists"
+        );
 
         uint256 index = 0;
         if (strategyHashes.length != 0) {
@@ -191,9 +192,10 @@ contract Vault is IVault, Initializable {
             activeStrategies--;
         }
 
-
         delete strategies[_hash];
-        strategyHashes[strategy.idx] = strategyHashes[strategyHashes.length - 1];
+        strategyHashes[strategy.idx] = strategyHashes[
+            strategyHashes.length - 1
+        ];
         strategyHashes.pop();
         emit DeleteStrategy(_hash);
     }
