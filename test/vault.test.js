@@ -308,6 +308,20 @@ describe("Vault", () => {
     expect(event.args.frequency).to.be.equal(frequency);
   });
 
+  it("createStrategy: Revert - Should revert due to a strategy already existing with that name", async () => {
+    await vault.connect(user).deposit(dai.address, daiAmount);
+
+    const frequency = 7;
+
+    let receipt = await vault
+      .connect(user)
+      .createStrategy(STRATEGY_HASH, weth.address, dai.address, daiAmount, frequency)
+      .then((tx) => tx.wait());
+
+    await expect(vault.connect(user).createStrategy(STRATEGY_HASH, weth.address, dai.address, daiAmount, frequency))
+      .to.be.revertedWith("Strategy with that name already exists");
+  });
+
   // ========================= UPDATE STRATEGY =============================
 
   it("updateStrategy: Should update the strategy at the given hash if found", async () => {
