@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity ^0.8.0;
 
-import "./interfaces/IWETH.sol";
+import "./interfaces/IWeth.sol";
 import "./interfaces/IVault.sol";
 import "./interfaces/VaultLibrary.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -18,8 +18,8 @@ contract Vault is IVault, Initializable {
     address[] private tokens;
     bytes32[] private strategyHashes;
 
-    IWETH public constant WETH =
-        IWETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
+    IWeth public constant WETH =
+        IWeth(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
 
     modifier onlyOwner() {
         require(msg.sender == owner, "Restricted to Owner");
@@ -191,7 +191,10 @@ contract Vault is IVault, Initializable {
             activeStrategies--;
         }
 
+
         delete strategies[_hash];
+        strategyHashes[strategy.idx] = strategyHashes[strategyHashes.length - 1];
+        strategyHashes.pop();
         emit DeleteStrategy(_hash);
     }
 

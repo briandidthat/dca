@@ -82,7 +82,7 @@ describe("StorageFacility", () => {
 
     it("setFactoryAddress: Revert - Should revert due to not being called by the owner", async () => {
         await expect(storageFacility.connect(user).setFactoryAddress(rando.address)).to.be.revertedWith(
-            "caller is not the owner"
+            "Ownable: caller is not the owner"
         );
     });
 
