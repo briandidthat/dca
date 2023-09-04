@@ -15,9 +15,7 @@ contract VaultFactory is Ownable {
     address private implementation;
     uint256 private instances;
     uint256 private fee = 0.05 ether;
-    address[] private deployers;
-
-    mapping(address => bool) private hasVault;
+    address[] private vaultOwners;
 
     IStorageFacility private storageFacility;
 
@@ -39,12 +37,11 @@ contract VaultFactory is Ownable {
 
     function deployVault() external payable returns (address instance) {
         require(msg.value >= fee, "Must pay fee to deploy Vault");
-        bool ownsVault = hasVault[msg.sender];
+        bool isVaultOwner = storageFacility.getIsVaultOwner(msg.sender);
 
         address clone = Clones.clone(implementation);
         IVault(clone).initialize(address(this), msg.sender, msg.sender);
 
-        emit NewVault(clone, msg.sender);
         // send fees back to treasury
         (bool success, bytes memory data) = treasury.call{value: msg.value}(
             "Vault fees"
@@ -52,15 +49,14 @@ contract VaultFactory is Ownable {
 
         require(success, VaultLibrary.getRevertMsg(data));
 
+        emit NewVault(clone, msg.sender);
+
         instances++;
-        if (!ownsVault) {
-            hasVault[msg.sender] = true;
-            deployers.push(msg.sender);
+        if (!isVaultOwner) {
+            vaultOwners.push(msg.sender);
         }
 
         storageFacility.storeVault(clone, msg.sender);
-
-        emit FactoryLogger(address(this), "State has been updated");
         instance = clone;
     }
 
@@ -85,17 +81,17 @@ contract VaultFactory is Ownable {
         return instances;
     }
 
-    function getUniqueDeployersCount() external view returns (uint256) {
-        return deployers.length;
+    function getVaultOwnersCount() external view returns (uint256) {
+        return vaultOwners.length;
     }
 
-    function getUniqueDeployers()
+    function getUniqueVaultOwners()
         external
         view
         onlyOwner
         returns (address[] memory)
     {
-        return deployers;
+        return vaultOwners;
     }
 
     function setNewStorageAddress(address _newStorage) external onlyOwner {

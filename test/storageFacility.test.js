@@ -2,7 +2,6 @@ const { expect } = require("chai");
 const { ethers } = require("hardhat");
 const { vaultFactoryFixture, storageFacilityFixture, getEventObject, EVENTS } = require("./utils");
 
-
 describe("StorageFacility", () => {
     let dev, user, rando;
     let vault, vaultFactory, storageFacility;
@@ -58,6 +57,23 @@ describe("StorageFacility", () => {
     });
 
     // ========================= STORE VAULT =============================
+
+    it("storeVault: Should store a vault in the storage facility upon deployment of vault", async () => {
+        const receipt = await vaultFactory
+            .connect(user)
+            .deployVault({ value: vaultFee })
+            .then((tx) => tx.wait());
+        // console.log(receipt)
+
+        const newVaultEvent = getEventObject(EVENTS.vaultFactory.NEW_VAULT, receipt.events);
+        const storeVaultEvent = getEventObject(EVENTS.storageFacility.STORE_VAULT, receipt.events);
+
+
+        expect(newVaultEvent.instance).to.be.equal(storeVaultEvent.instance);
+        expect(newVault.owner).to.be.equal(storeVaultEvent.owner);
+        expect(storeVaultEvent.count).to.be.equal(2); // should have 2 including one deployed in beforeEach
+
+    });
 
     it("storeVault: Revert - Should revert due to being called by somebody other than factory", async () => {
         await expect(storageFacility.connect(dev).storeVault(rando.address, dev.address)).to.be.revertedWith(

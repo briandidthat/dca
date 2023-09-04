@@ -292,9 +292,8 @@ describe("Vault", () => {
   // ========================= CREATE STRATEGY =============================
 
   it("createStrategy: Should create a strategy and log the strategy id", async () => {
-    await vault.connect(user).deposit(dai.address, daiAmount);
-
     const frequency = 7;
+    await vault.connect(user).deposit(dai.address, daiAmount);
 
     let receipt = await vault
       .connect(user)
@@ -309,11 +308,9 @@ describe("Vault", () => {
   });
 
   it("createStrategy: Revert - Should revert due to a strategy already existing with that name", async () => {
-    await vault.connect(user).deposit(dai.address, daiAmount);
-
     const frequency = 7;
-
-    let receipt = await vault
+    await vault.connect(user).deposit(dai.address, daiAmount);
+    await vault
       .connect(user)
       .createStrategy(STRATEGY_HASH, weth.address, dai.address, daiAmount, frequency)
       .then((tx) => tx.wait());

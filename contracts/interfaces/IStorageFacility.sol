@@ -6,7 +6,7 @@ import "./VaultLibrary.sol";
 interface IStorageFacility {
     struct VaultOwner {
         address owner;
-        uint8 count;
+        uint256 count;
         uint256 dateJoined;
     }
 
@@ -17,6 +17,11 @@ interface IStorageFacility {
     }
 
     event Logger(address indexed caller, bytes32 data);
+    event StoreVault(
+        address indexed instance,
+        address indexed owner,
+        uint256 count
+    );
     event NewFactory(address indexed oldFactory, address indexed newFactory);
 
     function setFactoryAddress(address _factory) external;
@@ -27,11 +32,15 @@ interface IStorageFacility {
 
     function storeVault(address _instance, address _owner) external;
 
-    function getFactoryAddress() external returns (address);
+    function getFactoryAddress() external view returns (address);
+
+    function getIsVaultOwner(address _owner) external view returns (bool);
 
     function getVaultOwner(
         address _owner
     ) external view returns (VaultOwner memory);
+
+    function getVaultOwners() external view returns (address[] memory);
 
     function getVaults(
         address _owner
