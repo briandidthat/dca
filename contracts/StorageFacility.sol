@@ -6,10 +6,12 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract StorageFacility is IStorageFacility, Ownable {
     address private factory;
+    address[] private deployers;
 
     mapping(address => bool) private isAdmin;
-    mapping(address => VaultOwner) private vaultOwners;
+    mapping(address => bool) private isVaultOwner;
     mapping(address => VaultDetails[]) private vaults;
+    mapping(address => VaultOwner) private vaultOwners;
 
     modifier onlyAdmin() {
         require(
@@ -28,7 +30,40 @@ contract StorageFacility is IStorageFacility, Ownable {
         _;
     }
 
-    function setFactoryAddress(address _newFactory) external override onlyOwner {
+    function storeVault(
+        address _instance,
+        address _vaultOwner
+    ) external override onlyFactory {
+        bool ownsVault = isVaultOwner[_vaultOwner];
+        VaultOwner memory vaultOwner = vaultOwners[_vaultOwner];
+        // store the owner if it is a first time user
+        if (!ownsVault) {
+            vaultOwner.owner = _vaultOwner;
+            vaultOwner.dateJoined = block.timestamp;
+            deployers.push(_vaultOwner);
+            isVaultOwner[_vaultOwner] = true;
+
+            emit Logger(_vaultOwner, "Storing new owner");
+        }
+
+        VaultDetails memory vault = VaultDetails({
+            instance: _instance,
+            owner: _vaultOwner,
+            timestamp: block.timestamp
+        });
+
+        // increment the amount of vaults the owner has
+        vaultOwner.count += 1;
+        // add the vault details to the owners array
+        vaults[_vaultOwner].push(vault);
+        // update the current owner struct in the mapping
+        vaultOwners[_vaultOwner] = vaultOwner;
+        emit StoreVault(_instance, _vaultOwner, vaultOwner.count);
+    }
+
+    function setFactoryAddress(
+        address _newFactory
+    ) external override onlyOwner {
         emit NewFactory(factory, _newFactory);
         factory = _newFactory;
     }
@@ -45,49 +80,35 @@ contract StorageFacility is IStorageFacility, Ownable {
         return factory;
     }
 
-    function getVaultOwner(
+    function getIsVaultOwner(
         address _vaultOwner
-    ) external view override returns (VaultOwner memory) {
-        VaultOwner memory vaultOwner = vaultOwners[_vaultOwner];
-        require(
-            vaultOwner.owner != address(0),
-            "No vaults present for that address"
-        );
-        return vaultOwners[_vaultOwner];
+    ) external view override returns (bool) {
+        return isVaultOwner[_vaultOwner];
     }
 
     function getVaults(
         address _vaultOwner
     ) external view override returns (VaultDetails[] memory) {
+        require(
+            isVaultOwner[_vaultOwner],
+            "No vaults present for that address"
+        );
         VaultDetails[] memory vaultDetails = vaults[_vaultOwner];
-        require(vaultDetails.length > 0, "No vaults present for that address");
         return vaultDetails;
     }
 
-    function storeVault(
-        address _instance,
+    function getVaultOwner(
         address _vaultOwner
-    ) external override onlyFactory {
-        VaultOwner memory vaultOwner = vaultOwners[_vaultOwner];
-        // store the owner if it is a first time user
-        if (vaultOwner.owner == address(0)) {
-            vaultOwner.owner = _vaultOwner;
-            vaultOwner.dateJoined = block.timestamp;
-            emit Logger(_vaultOwner, "Storing new owner");
-        }
+    ) external view override returns (VaultOwner memory) {
+        require(
+            isVaultOwner[_vaultOwner],
+            "No vaults present for that address"
+        );
 
-        VaultDetails memory vault = VaultDetails({
-            instance: _instance,
-            owner: _vaultOwner,
-            timestamp: block.timestamp
-        });
+        return vaultOwners[_vaultOwner];
+    }
 
-        // increment the amount of vaults the owner has
-        vaultOwner.count += 1;
-        // add the vault details to the owners array
-        vaults[_vaultOwner].push(vault);
-        // update the current owner struct in the mapping
-        vaultOwners[_vaultOwner] = vaultOwner;
-        emit Logger(_instance, "Stored new vault");
+    function getVaultOwners() external view returns (address[] memory) {
+        return deployers;
     }
 }

@@ -38,7 +38,8 @@ const EVENTS = {
   },
   storageFacility: {
     LOGGER: "Logger",
-    NEW_FACTORY: "NewFactory"
+    NEW_FACTORY: "NewFactory",
+    STORE_VAULT: "StoreVault"
   }
 };
 
@@ -102,9 +103,9 @@ function getHash(...args) {
 
 function getEventObject(target, events) {
   let event = null;
-  events.map((item) => {
-    if (item.event === target) {
-      event = item;
+  events.map((element) => {
+    if (element.event === target) {
+      event = element;
     }
   });
   return event;
