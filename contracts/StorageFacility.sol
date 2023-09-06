@@ -38,10 +38,10 @@ contract StorageFacility is IStorageFacility, Ownable {
         VaultOwner memory vaultOwner = vaultOwners[_vaultOwner];
         // store the owner if it is a first time user
         if (!ownsVault) {
+            isVaultOwner[_vaultOwner] = true;
+            deployers.push(_vaultOwner);
             vaultOwner.owner = _vaultOwner;
             vaultOwner.dateJoined = block.timestamp;
-            deployers.push(_vaultOwner);
-            isVaultOwner[_vaultOwner] = true;
 
             emit Logger(_vaultOwner, "Storing new owner");
         }
