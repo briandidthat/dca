@@ -59,20 +59,27 @@ describe("StorageFacility", () => {
     // ========================= STORE VAULT =============================
 
     it("storeVault: Should store a vault in the storage facility upon deployment of vault", async () => {
+        // deploy another vault bringing our current total to 2
         const receipt = await vaultFactory
             .connect(user)
             .deployVault({ value: vaultFee })
             .then((tx) => tx.wait());
-        // console.log(receipt)
 
         const newVaultEvent = getEventObject(EVENTS.vaultFactory.NEW_VAULT, receipt.events);
-        const storeVaultEvent = getEventObject(EVENTS.storageFacility.STORE_VAULT, receipt.events);
+        const allEvents = await ethers.provider.getTransactionReceipt(receipt.transactionHash);
 
+        // define the event abi for the event we are looking for
+        var abi = ["event StoreVault(address indexed instance, address indexed owner, uint256 count)"];
+        // new interface using the event abi we defined above
+        var iface = new ethers.utils.Interface(abi);
+        // find the event log that we are looking for
+        const log = allEvents.logs.find((x) => x.address === storageFacility.address);
+        let event = iface.parseLog(log);
+        const { instance, owner, count } = event.args;
 
-        expect(newVaultEvent.instance).to.be.equal(storeVaultEvent.instance);
-        expect(newVault.owner).to.be.equal(storeVaultEvent.owner);
-        expect(storeVaultEvent.count).to.be.equal(2); // should have 2 including one deployed in beforeEach
-
+        expect(instance).to.be.equal(newVaultEvent.args.instance);
+        expect(owner).to.be.equal(user.address);
+        expect(count).to.be.equal(2);
     });
 
     it("storeVault: Revert - Should revert due to being called by somebody other than factory", async () => {
