@@ -1,6 +1,6 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
-const { vaultFactoryFixture, storageFacilityFixture, getEventObject, EVENTS } = require("./utils");
+const { EVENTS, getEventObject, storageFacilityFixture, vaultFactoryFixture } = require("./utils");
 
 describe("StorageFacility", () => {
     let dev, user, rando;
@@ -66,16 +66,18 @@ describe("StorageFacility", () => {
             .then((tx) => tx.wait());
 
         const newVaultEvent = getEventObject(EVENTS.vaultFactory.NEW_VAULT, receipt.events);
+        // grab all nested events since the above event only provides the top level events
         const allEvents = await ethers.provider.getTransactionReceipt(receipt.transactionHash);
 
         // define the event abi for the event we are looking for
-        var abi = ["event StoreVault(address indexed instance, address indexed owner, uint256 count)"];
+        const abi = ["event StoreVault(address indexed instance, address indexed owner, uint256 count)"];
         // new interface using the event abi we defined above
-        var iface = new ethers.utils.Interface(abi);
+        const iface = new ethers.utils.Interface(abi);
         // find the event log that we are looking for
         const log = allEvents.logs.find((x) => x.address === storageFacility.address);
-        let event = iface.parseLog(log);
-        const { instance, owner, count } = event.args;
+        // parse the logs using the interface we definced
+        const event = iface.parseLog(log);
+        const { instance, owner, count } = event.args; // extract the values we want from the logs
 
         expect(instance).to.be.equal(newVaultEvent.args.instance);
         expect(owner).to.be.equal(user.address);
