@@ -14,7 +14,7 @@ contract VaultFactory is Ownable {
     address private treasury;
     address private implementation;
     uint256 private instances;
-    uint256 private fee = 0.05 ether;
+    uint256 private fee = 0.01 ether;
     address[] private vaultOwners;
 
     IStorageFacility private storageFacility;
@@ -95,10 +95,8 @@ contract VaultFactory is Ownable {
     }
 
     function setNewStorageAddress(address _newStorage) external onlyOwner {
+        require(_newStorage != address(0), "Storage cannot be zero address");
         storageFacility = IStorageFacility(_newStorage);
-        emit FactoryLogger(
-            address(storageFacility),
-            "Storage contract updated"
-        );
+        emit FactoryLogger(_newStorage, "Storage contract updated");
     }
 }

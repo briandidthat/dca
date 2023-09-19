@@ -42,6 +42,7 @@ contract StorageFacility is IStorageFacility, Ownable {
             deployers.push(_vaultOwner);
             vaultOwner.owner = _vaultOwner;
             vaultOwner.dateJoined = block.timestamp;
+            vaultOwner.facility = address(this);
 
             emit Logger(_vaultOwner, "Storing new owner");
         }
@@ -108,7 +109,11 @@ contract StorageFacility is IStorageFacility, Ownable {
         return vaultOwners[_vaultOwner];
     }
 
-    function getVaultOwners() external view returns (address[] memory) {
+    function getVaultOwners()
+        external
+        view
+        returns (address[] memory)
+    {
         return deployers;
     }
 }

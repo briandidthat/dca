@@ -90,6 +90,14 @@ describe("StorageFacility", () => {
         );
     })
 
+    it("storeVault: Revert - Should revert due to the factory not being set.", async () => {
+        // create new storage facility and not set the factory address
+        storageFacility = await storageFacilityFixture();
+        await expect(storageFacility.connect(dev).storeVault(rando.address, dev.address)).to.be.revertedWith(
+            "Factory has not been set yet"
+        );
+    })
+
     // ========================= SET FACTORY ADDRESS =============================
 
     it("setFactoryAddress: Should set new vault factory address", async () => {
