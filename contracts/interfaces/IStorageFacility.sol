@@ -7,6 +7,7 @@ interface IStorageFacility {
     struct VaultOwner {
         address owner;
         uint256 count;
+        address facility;
         uint256 dateJoined;
     }
 
