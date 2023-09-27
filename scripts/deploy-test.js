@@ -5,6 +5,8 @@ const {
   chamberFactoryFixture,
   tokenFixture,
   getHash,
+  getEventObject,
+  EVENTS,
 } = require("../test/utils");
 
 async function main() {
@@ -34,7 +36,7 @@ async function main() {
   );
   assert(owner === dev.address);
 
-  let chamberDeployment = await chamberFactory
+  let receipt1 = await chamberFactory
     .connect(user)
     .deployChamber({
       value: ethers.utils.parseEther("0.05"),
@@ -46,8 +48,9 @@ async function main() {
 
   assert(treasuryAddr == treasury.address);
 
-  const chamberAddr = chamberDeployment.events[1].args.instance;
-  const chamber = await ethers.getContractAt("Chamber", chamberAddr);
+  const event1 = getEventObject(EVENTS.vaultFactory.NEW_VAULT, receipt1.events)
+  const chamber1Addr = event1.args.instance;
+  const chamber = await ethers.getContractAt("Chamber", chamber1Addr);
   const chamberOwner = await chamber.getOwner();
 
   console.log(`Chamber deployed at ${chamber.address}. Owner: ${chamberOwner}`);
@@ -89,14 +92,15 @@ async function main() {
   assert(strategy.buyToken, weth.address);
   assert(strategy.sellToken, dai.address);
 
-  let chamber2Deployment = await chamberFactory
+  let receipt2 = await chamberFactory
     .connect(user)
     .deployChamber({
       value: ethers.utils.parseEther("0.05"),
     })
     .then((tx) => tx.wait());
 
-  const chamber2Addr = chamber2Deployment.events[1].args.instance;
+  const event2 = getEventObject(EVENTS.vaultFactory.NEW_VAULT, receipt2.events);
+  const chamber2Addr = event2.args.instance;
   console.log(`Chamber 2 deployed at address: ${chamber2Addr}, Owner: ${user.address}`)
 
   const chambers = await chamberFactory.getChambers(user.address);
