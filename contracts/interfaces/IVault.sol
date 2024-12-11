@@ -63,7 +63,8 @@ interface IVault {
     function initialize(
         address factory,
         address owner,
-        address operator
+        address operator,
+        address vaultStorage
     ) external;
 
     function executeSwap(

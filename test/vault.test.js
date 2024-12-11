@@ -11,6 +11,7 @@ const {
   createQueryString,
   getEventObject,
 } = require("./utils");
+const { wethToDaiQuoteMock } = require("./mock");
 
 ZEROX_URL = process.env.ZEROX_URL;
 ZEROX_API_KEY = process.env.ZEROX_API_KEY;
@@ -32,26 +33,28 @@ describe("Vault", () => {
 
   beforeEach(async () => {
     [dev, user, operator, attacker, ...accounts] = await ethers.getSigners();
+    // Deploy the storage facility fixture
     const storageFacility = await storageFacilityFixture();
+     // Deploy the vault factory fixture with the storage facility address
     vaultFactory = await vaultFactoryFixture(storageFacility.address);
+    // Set the factory address in the storage facility
     await storageFacility.connect(dev).setFactoryAddress(vaultFactory.address);
+    // deploy token fixtures
     const tokens = await tokenFixture();
-
     dai = tokens.dai;
     weth = tokens.weth;
     usdc = tokens.usdc;
     cEth = tokens.cEth;
 
+    // create a new vault and get the transaction receipt
     let receipt = await vaultFactory
       .connect(user)
       .deployVault({ value: vaultFee })
       .then((tx) => tx.wait());
 
-    const event = getEventObject(
-      EVENTS.vaultFactory.NEW_VAULT,
-      receipt.events
-    );
-    // get the vault we just deployed using the address from logs
+    // Extract the NEW VAULT event from the logs
+    const event = getEventObject(EVENTS.vaultFactory.NEW_VAULT, receipt.events);
+    // get the vault contract we just deployed using the address from logs
     vault = await ethers.getContractAt("IVault", event.args.instance);
 
     // unlock USDC/DAI Whale account
@@ -129,9 +132,7 @@ describe("Vault", () => {
     await user.sendTransaction({ to: vault.address, value: ethAmount });
 
     let userBalanceBefore = await ethers.provider.getBalance(user.address);
-    let vaultBalanceBefore = await ethers.provider.getBalance(
-      vault.address
-    );
+    let vaultBalanceBefore = await ethers.provider.getBalance(vault.address);
 
     await vault.connect(user).withdrawETH(ethAmount);
 
@@ -189,6 +190,43 @@ describe("Vault", () => {
 
     const response = await axios.get(url);
     const quote = response.data;
+
+    await dai.connect(user).approve(quote.allowanceTarget, quote.sellAmount);
+
+    let receipt = await vault
+      .connect(user)
+      .executeSwap(
+        quote.sellTokenAddress,
+        quote.buyTokenAddress,
+        daiAmount,
+        quote.allowanceTarget,
+        quote.to,
+        quote.data
+      )
+      .then((tx) => tx.wait());
+
+    const event = getEventObject(EVENTS.vault.EXECUTE_SWAP, receipt.events);
+
+    const vaultWethBalance = await weth.balanceOf(vault.address);
+    const vaultBalance = await vault.balanceOf(weth.address);
+
+    expect(vaultWethBalance).to.be.gt(0);
+    expect(vaultBalance).to.be.equal(vaultWethBalance);
+    expect(event.args.sellToken).to.be.equal(dai.address);
+    expect(event.args.buyToken).to.be.equal(weth.address);
+    expect(event.args.amount).to.be.equal(daiAmount);
+  });
+
+  it("executeSwap: Should swap WETH to DAI using 0x liquidity", async () => {
+    await vault.connect(user).deposit(dai.address, daiAmount);
+
+    const url = createQueryString(ZEROX_URL, {
+      sellToken: "WETH",
+      buyToken: "DAI",
+      sellAmount: daiAmount.toString(),
+    });
+
+    const quote = wethToDaiQuoteMock;
 
     await dai.connect(user).approve(quote.allowanceTarget, quote.sellAmount);
 
@@ -297,7 +335,13 @@ describe("Vault", () => {
 
     let receipt = await vault
       .connect(user)
-      .createStrategy(STRATEGY_HASH, weth.address, dai.address, daiAmount, frequency)
+      .createStrategy(
+        STRATEGY_HASH,
+        weth.address,
+        dai.address,
+        daiAmount,
+        frequency
+      )
       .then((tx) => tx.wait());
 
     const event = getEventObject(EVENTS.vault.NEW_STRATEGY, receipt.events);
@@ -312,11 +356,26 @@ describe("Vault", () => {
     await vault.connect(user).deposit(dai.address, daiAmount);
     await vault
       .connect(user)
-      .createStrategy(STRATEGY_HASH, weth.address, dai.address, daiAmount, frequency)
+      .createStrategy(
+        STRATEGY_HASH,
+        weth.address,
+        dai.address,
+        daiAmount,
+        frequency
+      )
       .then((tx) => tx.wait());
 
-    await expect(vault.connect(user).createStrategy(STRATEGY_HASH, weth.address, dai.address, daiAmount, frequency))
-      .to.be.revertedWith("Strategy with that name already exists");
+    await expect(
+      vault
+        .connect(user)
+        .createStrategy(
+          STRATEGY_HASH,
+          weth.address,
+          dai.address,
+          daiAmount,
+          frequency
+        )
+    ).to.be.revertedWith("Strategy with that name already exists");
   });
 
   // ========================= UPDATE STRATEGY =============================
@@ -327,7 +386,13 @@ describe("Vault", () => {
 
     await vault
       .connect(user)
-      .createStrategy(STRATEGY_HASH, weth.address, usdc.address, usdcAmount, frequency);
+      .createStrategy(
+        STRATEGY_HASH,
+        weth.address,
+        usdc.address,
+        usdcAmount,
+        frequency
+      );
 
     const strategy = await vault.connect(user).getStrategy(STRATEGY_HASH);
     const updatedFrequency = 10;
@@ -373,8 +438,13 @@ describe("Vault", () => {
       .deprecateStrategy(STRATEGY_HASH)
       .then((tx) => tx.wait());
 
-    const event = getEventObject(EVENTS.vault.DEPRECATE_STRATEGY, receipt.events);
-    const deprecatedStrategy = await vault.connect(user).getStrategy(STRATEGY_HASH);
+    const event = getEventObject(
+      EVENTS.vault.DEPRECATE_STRATEGY,
+      receipt.events
+    );
+    const deprecatedStrategy = await vault
+      .connect(user)
+      .getStrategy(STRATEGY_HASH);
     const activeStrategies = await vault.getActiveStrategies();
 
     expect(deprecatedStrategy.status).to.be.equal(1); // 1 == DEACTIVATED
@@ -425,7 +495,12 @@ describe("Vault", () => {
 
     const receipt = await vault
       .connect(user)
-      .executeStrategy(STRATEGY_HASH, quote.allowanceTarget, quote.to, quote.data)
+      .executeStrategy(
+        STRATEGY_HASH,
+        quote.allowanceTarget,
+        quote.to,
+        quote.data
+      )
       .then((tx) => tx.wait());
 
     const event = getEventObject(EVENTS.vault.EXECUTE_STRATEGY, receipt.events);
@@ -457,7 +532,12 @@ describe("Vault", () => {
 
     const receipt = await vault
       .connect(operator)
-      .executeStrategy(STRATEGY_HASH, quote.allowanceTarget, quote.to, quote.data)
+      .executeStrategy(
+        STRATEGY_HASH,
+        quote.allowanceTarget,
+        quote.to,
+        quote.data
+      )
       .then((tx) => tx.wait());
 
     const event = getEventObject(EVENTS.vault.EXECUTE_STRATEGY, receipt.events);
@@ -518,7 +598,13 @@ describe("Vault", () => {
 
     await vault
       .connect(user)
-      .createStrategy(STRATEGY_HASH, weth.address, usdc.address, usdcAmount, frequency);
+      .createStrategy(
+        STRATEGY_HASH,
+        weth.address,
+        usdc.address,
+        usdcAmount,
+        frequency
+      );
 
     const strategy = await vault.connect(user).getStrategy(STRATEGY_HASH);
 
@@ -536,11 +622,23 @@ describe("Vault", () => {
     const frequency = 7;
     await vault
       .connect(user)
-      .createStrategy(STRATEGY_HASH, weth.address, dai.address, daiAmount, frequency);
+      .createStrategy(
+        STRATEGY_HASH,
+        weth.address,
+        dai.address,
+        daiAmount,
+        frequency
+      );
 
     await vault
       .connect(user)
-      .createStrategy(STRATEGY2_HASH, weth.address, usdc.address, usdcAmount, frequency);
+      .createStrategy(
+        STRATEGY2_HASH,
+        weth.address,
+        usdc.address,
+        usdcAmount,
+        frequency
+      );
 
     const strategies = await vault.connect(user).getStrategies();
     const strategy = strategies[0];

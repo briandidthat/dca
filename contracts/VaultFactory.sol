@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "./Vault.sol";
+import "./VaultStorage.sol";
 import "./StorageFacility.sol";
 import "./interfaces/IVault.sol";
 import "./interfaces/IStorageFacility.sol";
@@ -39,8 +40,19 @@ contract VaultFactory is Ownable {
         require(msg.value >= fee, "Must pay fee to deploy Vault");
         bool isVaultOwner = storageFacility.getIsVaultOwner(msg.sender);
 
+        // create new vault storage for the new vault we'll be deploying
+        VaultStorage vaultStorage = new VaultStorage(msg.sender, address(this));
+        // deploy the new vault proxy contract
         address clone = Clones.clone(implementation);
-        IVault(clone).initialize(address(this), msg.sender, msg.sender);
+        IVault(clone).initialize(
+            address(this),
+            msg.sender,
+            msg.sender,
+            address(vaultStorage)
+        );
+
+        // set the vault address in the vault storage contract
+        vaultStorage.setVault(clone);
 
         // send fees back to treasury
         (bool success, bytes memory data) = treasury.call{value: msg.value}(
