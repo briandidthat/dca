@@ -1,15 +1,13 @@
-const { ethers } = require("hardhat");
+const { ethers, web3 } = require("hardhat");
+
+const ETH = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
+const DAI = "0x6B175474E89094C44Da98b954EedeAC495271d0F";
+const USDC = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
+const USDT = "0xdac17f958d2ee523a2206206994597c13d831ec7";
+const WETH = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2";
 
 const WHALE = "0x7a8edc710ddeadddb0b539de83f3a306a621e823";
 const USDT_WHALE = "0xa929022c9107643515f5c777ce9a910f0d1e490c";
-
-const DAI = "0x6b175474e89094c44da98b954eedeac495271d0f";
-const USDC = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48";
-const USDT = "0xdac17f958d2ee523a2206206994597c13d831ec7";
-const WETH = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2";
-const cDAI = "0x5d3a536E4D6DbD6114cc1Ead35777bAB948E3643";
-const cUSDC = "0x39AA39c021dfbaE8faC545936693aC917d5E7563";
-const cETH = "0x4Ddc2D193948926D02f9B1fE9e1daa0718270ED5";
 
 const TOKEN_DETAILS = {
   networks: {
@@ -17,72 +15,111 @@ const TOKEN_DETAILS = {
       DAI,
       USDC,
       WETH,
-      cDAI,
-      cUSDC,
-      cETH,
     },
   },
 };
 
-const tokenLibraryFixture = async () => {
-  const Library = await ethers.getContractFactory("TokenLibrary");
+const EVENTS = {
+  vault: {
+    NEW_OPERATOR: "NewOperator",
+    DEPOSIT: "Deposit",
+    WITHDRAW: "Withdraw",
+    NEW_STRATEGY: "NewStrategy",
+    UPDATE_STRATEGY: "UpdateStrategy",
+    EXECUTE_STRATEGY: "ExecuteStrategy",
+    DEPRECATE_STRATEGY: "DeprecateStrategy",
+    DELETE_STRATEGY: "DeleteStrategy",
+    REACTIVATE_STRATEGY: "ReactivateStrategy",
+    EXECUTE_SWAP: "ExecuteSwap"
+  },
+  vaultFactory: {
+    NEW_VAULT: "NewVault",
+    FEE_CHANGE: "FeeChange"
+  },
+  storageFacility: {
+    LOGGER: "Logger",
+    NEW_FACTORY: "NewFactory",
+    STORE_VAULT: "StoreVault"
+  }
+};
+
+function createQueryString(url, params) {
+  return (
+    url +
+    Object.entries(params)
+      .map(([k, v]) => `${k}=${v}`)
+      .join("&")
+  );
+}
+
+async function vaultLibraryFixture() {
+  const Library = await ethers.getContractFactory("VaultLibrary");
   const library = await Library.deploy();
   await library.deployed();
 
   return library;
-};
+}
 
-const tokenFixture = async () => {
+async function tokenFixture() {
   const dai = await ethers.getContractAt("IERC20", DAI);
-  const weth = await ethers.getContractAt("IWETH", WETH);
+  const weth = await ethers.getContractAt("IWeth", WETH);
   const usdc = await ethers.getContractAt("IERC20", USDC);
   const usdt = await ethers.getContractAt("IERC20", USDT);
 
-  const cDai = await ethers.getContractAt("ICERC20", cDAI);
-  const cEth = await ethers.getContractAt("ICETH", cETH);
-  const cUsdc = await ethers.getContractAt("ICERC20", cUSDC);
+  return { dai, weth, usdc, usdt };
+}
 
-  return { dai, weth, usdc, usdt, cDai, cEth, cUsdc };
-};
+async function vaultFactoryFixture(storageFacility) {
+  const library = await vaultLibraryFixture();
+  const [deployer, _, treasury] = await ethers.getSigners();
 
-const uniswapExchangeFixture = async () => {
-  const library = await tokenLibraryFixture();
-  const UniswapExchange = await ethers.getContractFactory("UniswapExchange", {
+  const VaultFactory = await ethers.getContractFactory("VaultFactory", {
     libraries: {
-      TokenLibrary: library.address,
+      VaultLibrary: library.address,
     },
   });
 
-  const uniswapExchange = await UniswapExchange.deploy();
-  await uniswapExchange.deployed();
+  const vaultFactory = await VaultFactory.connect(deployer).deploy(
+    treasury.address,
+    storageFacility
+  );
+  await vaultFactory.deployed();
 
-  return uniswapExchange;
-};
+  return vaultFactory;
+}
 
-const chamberFactoryFixture = async () => {
-  const uniswapExchange = await uniswapExchangeFixture();
+async function storageFacilityFixture() {
+  const [deployer] = await ethers.getSigners();
 
-  const Chamber = await ethers.getContractFactory("Chamber");
-  const ChamberFactory = await ethers.getContractFactory("ChamberFactory");
+  const StorageFacility = await ethers.getContractFactory("StorageFacility");
+  const storageFacility = await StorageFacility.connect(deployer).deploy();
+  await storageFacility.deployed();
+  return storageFacility;
+}
 
-  const chamberFactory = await ChamberFactory.deploy(uniswapExchange.address);
+function getHash(...args) {
+  return web3.utils.soliditySha3(...args);
+}
 
-  await chamberFactory.deployed();
-
-  const chamber = await Chamber.deploy();
-  await chamber.deployed();
-
-  return {
-    chamberFactory,
-    chamber,
-  };
-};
+function getEventObject(target, events) {
+  let event = null;
+  events.map((element) => {
+    if (element.event === target) {
+      event = element;
+    }
+  });
+  return event;
+}
 
 module.exports = {
-  tokenFixture,
-  uniswapExchangeFixture,
-  chamberFactoryFixture,
-  TOKEN_DETAILS,
   WHALE,
+  EVENTS,
   USDT_WHALE,
+  TOKEN_DETAILS,
+  getHash,
+  getEventObject,
+  tokenFixture,
+  createQueryString,
+  vaultFactoryFixture,
+  storageFacilityFixture
 };

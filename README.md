@@ -1,15 +1,5 @@
-# Basic Sample Hardhat Project
+# Executor
 
-This project demonstrates a basic Hardhat use case. It comes with a sample contract, a test for that contract, a sample script that deploys that contract, and an example of a task implementation, which simply lists the available accounts.
+This project demonstrates a vault contract that facilitates the creation and execution of trading strategies on Ethereum using 0x protocol. Users can deploy a vault that will accept ERC20 tokens for swapping via strategies or manually.
 
-Try running some of the following tasks:
-
-```shell
-npx hardhat accounts
-npx hardhat compile
-npx hardhat clean
-npx hardhat test
-npx hardhat node
-node scripts/sample-script.js
-npx hardhat help
-```
+You will need to visit [Ox API](https://0x.org) to generate a token for enabling swap quote requests
