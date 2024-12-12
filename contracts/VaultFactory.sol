@@ -5,7 +5,6 @@ import "./Vault.sol";
 import "./VaultStorage.sol";
 import "./StorageFacility.sol";
 import "./interfaces/IVault.sol";
-import "./interfaces/IStorageFacility.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/proxy/Clones.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -18,7 +17,7 @@ contract VaultFactory is Ownable {
     uint256 private fee = 0.01 ether;
     address[] private vaultOwners;
 
-    IStorageFacility private storageFacility;
+    StorageFacility private storageFacility;
 
     event FactoryLogger(address indexed instance, bytes32 data);
     event FeeChanged(uint256 previousFee, uint256 newFee);
@@ -28,7 +27,7 @@ contract VaultFactory is Ownable {
     constructor(address _treasury, address _storageFacility) {
         implementation = address(new Vault());
         treasury = _treasury;
-        storageFacility = IStorageFacility(_storageFacility);
+        storageFacility = StorageFacility(_storageFacility);
     }
 
     function setFee(uint256 _newFee) external onlyOwner {
@@ -108,7 +107,7 @@ contract VaultFactory is Ownable {
 
     function setNewStorageAddress(address _newStorage) external onlyOwner {
         require(_newStorage != address(0), "Storage cannot be zero address");
-        storageFacility = IStorageFacility(_newStorage);
+        storageFacility = StorageFacility(_newStorage);
         emit FactoryLogger(_newStorage, "Storage contract updated");
     }
 }

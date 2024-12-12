@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import "./interfaces/IWeth.sol";
 import "./interfaces/IVault.sol";
 import "./interfaces/VaultLibrary.sol";
+import "./interfaces/IExecutor.sol";
 import "./VaultStorage.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
@@ -175,11 +176,6 @@ contract Vault is IVault, Initializable {
         bytes calldata _swapCallData
     ) external onlyAuthorized isActive {
         Strategy memory strategy = vaultStorage.getStrategy(_hashId);
-
-        require(
-            block.timestamp - strategy.lastSwap >= strategy.frequency,
-            "Not ready to be executed"
-        );
 
         bool success = _executeSwap(
             strategy.sellToken,

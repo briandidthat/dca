@@ -1,16 +1,17 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity ^0.8.0;
 
-import "./interfaces/IVault.sol";
+import "./interfaces/IExecutor.sol";
 
-contract VaultStorage {
+contract VaultStorage is IExecutor {
+    bool private initialized;
     address private owner;
     address private vault;
     address private factory;
     uint256 private activeStrategies;
-    bool private initialized;
-    mapping(bytes32 => IVault.Strategy) private strategies;
+    mapping(bytes32 => Strategy) private strategyMapping;
     bytes32[] private strategyHashes;
+    Strategy[] private strategies;
 
     modifier isInitialized() {
         require(initialized, "Contract not initialized");
@@ -39,7 +40,9 @@ contract VaultStorage {
 
     function setVault(address _vault) external onlyFactory {
         vault = _vault;
-        initialized = true;
+        if (!initialized) {
+            initialized = true;
+        }
     }
 
     function createStrategy(
@@ -51,7 +54,7 @@ contract VaultStorage {
     ) external isInitialized onlyVault returns (bytes32) {
         require(vault != address(0), "Vault not set");
         require(
-            strategies[_hashId].sellToken == address(0),
+            strategyMapping[_hashId].sellToken == address(0),
             "Strategy with that name already exists"
         );
 
@@ -60,7 +63,7 @@ contract VaultStorage {
             index = strategyHashes.length - 1;
         }
 
-        IVault.Strategy memory strategy = IVault.Strategy({
+        Strategy memory strategy = Strategy({
             idx: index,
             hashId: _hashId,
             buyToken: _buyToken,
@@ -70,43 +73,44 @@ contract VaultStorage {
             lastSwap: 0,
             timestamp: block.timestamp,
             frequency: _frequency,
-            status: IVault.StrategyStatus.ACTIVE
+            status: StrategyStatus.ACTIVE
         });
 
-        strategies[_hashId] = strategy;
+        strategyMapping[_hashId] = strategy;
         strategyHashes.push(_hashId);
         activeStrategies++;
+        strategies.push(strategy);
 
         return _hashId;
     }
 
     function updateStrategy(
-        IVault.Strategy memory _strategy
+        Strategy memory _strategy
     ) external isInitialized onlyVault {
-        strategies[_strategy.hashId] = _strategy;
+        strategyMapping[_strategy.hashId] = _strategy;
     }
 
     function deprecateStrategy(bytes32 _hash) external isInitialized onlyVault {
-        IVault.Strategy storage strategy = strategies[_hash];
-        strategy.status = IVault.StrategyStatus.DEPRECATED;
+        Strategy storage strategy = strategyMapping[_hash];
+        strategy.status = StrategyStatus.DEPRECATED;
         activeStrategies--;
     }
 
     function reactivateStrategy(
         bytes32 _hash
     ) external isInitialized onlyVault {
-        IVault.Strategy storage strategy = strategies[_hash];
-        strategy.status = IVault.StrategyStatus.ACTIVE;
+        Strategy storage strategy = strategyMapping[_hash];
+        strategy.status = StrategyStatus.ACTIVE;
         activeStrategies++;
     }
 
     function deleteStrategy(bytes32 _hash) external isInitialized onlyVault {
-        IVault.Strategy memory strategy = strategies[_hash];
-        if (strategy.status == IVault.StrategyStatus.ACTIVE) {
+        Strategy memory strategy = strategyMapping[_hash];
+        if (strategy.status == StrategyStatus.ACTIVE) {
             activeStrategies--;
         }
 
-        delete strategies[_hash];
+        delete strategyMapping[_hash];
         strategyHashes[strategy.idx] = strategyHashes[
             strategyHashes.length - 1
         ];
@@ -115,8 +119,8 @@ contract VaultStorage {
 
     function getStrategy(
         bytes32 _hash
-    ) external view isInitialized onlyVault returns (IVault.Strategy memory) {
-        IVault.Strategy memory strategy = strategies[_hash];
+    ) external view isInitialized onlyVault returns (Strategy memory) {
+        Strategy memory strategy = strategyMapping[_hash];
 
         require(strategy.buyToken != address(0), "Strategy not found");
         return strategy;
@@ -127,16 +131,9 @@ contract VaultStorage {
         view
         isInitialized
         onlyVault
-        returns (IVault.Strategy[] memory)
+        returns (Strategy[] memory)
     {
-        uint256 length = strategyHashes.length;
-        IVault.Strategy[] memory strats = new IVault.Strategy[](length);
-
-        for (uint256 i = 0; i < length; i++) {
-            strats[i] = strategies[strategyHashes[i]];
-        }
-
-        return strats;
+        return strategies;
     }
 
     function getActiveStrategies()
@@ -144,17 +141,15 @@ contract VaultStorage {
         view
         isInitialized
         onlyVault
-        returns (IVault.Strategy[] memory)
+        returns (Strategy[] memory)
     {
         uint256 length = strategyHashes.length;
-        IVault.Strategy[] memory active = new IVault.Strategy[](
-            activeStrategies
-        );
+        Strategy[] memory active = new Strategy[](activeStrategies);
 
         uint256 count = 0;
         for (uint256 i = 0; i < length; i++) {
-            IVault.Strategy memory strategy = strategies[strategyHashes[i]];
-            if (strategy.status == IVault.StrategyStatus.ACTIVE) {
+            Strategy memory strategy = strategyMapping[strategyHashes[i]];
+            if (strategy.status == StrategyStatus.ACTIVE) {
                 active[count] = strategy;
                 count++;
             }
