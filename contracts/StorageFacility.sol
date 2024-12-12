@@ -1,12 +1,32 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity ^0.8.0;
 
-import "./interfaces/IStorageFacility.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract StorageFacility is IStorageFacility, Ownable {
+contract StorageFacility is Ownable {
     address private factory;
     address[] private deployers;
+
+    struct VaultOwner {
+        address owner;
+        uint256 count;
+        address facility;
+        uint256 dateJoined;
+    }
+
+    struct VaultDetails {
+        address instance;
+        address owner;
+        uint256 timestamp;
+    }
+
+    event Logger(address indexed caller, bytes32 data);
+    event StoreVault(
+        address indexed instance,
+        address indexed owner,
+        uint256 count
+    );
+    event NewFactory(address indexed oldFactory, address indexed newFactory);
 
     mapping(address => bool) private isAdmin;
     mapping(address => bool) private isVaultOwner;
@@ -33,7 +53,7 @@ contract StorageFacility is IStorageFacility, Ownable {
     function storeVault(
         address _instance,
         address _vaultOwner
-    ) external override onlyFactory {
+    ) external onlyFactory {
         bool ownsVault = isVaultOwner[_vaultOwner];
         VaultOwner memory vaultOwner = vaultOwners[_vaultOwner];
         // store the owner if it is a first time user
@@ -64,32 +84,32 @@ contract StorageFacility is IStorageFacility, Ownable {
 
     function setFactoryAddress(
         address _newFactory
-    ) external override onlyOwner {
+    ) external onlyOwner {
         emit NewFactory(factory, _newFactory);
         factory = _newFactory;
     }
 
-    function setAdmin(address _admin) external override onlyOwner {
+    function setAdmin(address _admin) external onlyOwner {
         isAdmin[_admin] = true;
     }
 
-    function revokeAdminRights(address _admin) external override onlyOwner {
+    function revokeAdminRights(address _admin) external onlyOwner {
         isAdmin[_admin] = false;
     }
 
-    function getFactoryAddress() external view override returns (address) {
+    function getFactoryAddress() external view returns (address) {
         return factory;
     }
 
     function getIsVaultOwner(
         address _vaultOwner
-    ) external view override returns (bool) {
+    ) external view returns (bool) {
         return isVaultOwner[_vaultOwner];
     }
 
     function getVaults(
         address _vaultOwner
-    ) external view override returns (VaultDetails[] memory) {
+    ) external view returns (VaultDetails[] memory) {
         require(
             isVaultOwner[_vaultOwner],
             "No vaults present for that address"
@@ -100,7 +120,7 @@ contract StorageFacility is IStorageFacility, Ownable {
 
     function getVaultOwner(
         address _vaultOwner
-    ) external view override returns (VaultOwner memory) {
+    ) external view returns (VaultOwner memory) {
         require(
             isVaultOwner[_vaultOwner],
             "No vaults present for that address"
@@ -109,11 +129,7 @@ contract StorageFacility is IStorageFacility, Ownable {
         return vaultOwners[_vaultOwner];
     }
 
-    function getVaultOwners()
-        external
-        view
-        returns (address[] memory)
-    {
+    function getVaultOwners() external view returns (address[] memory) {
         return deployers;
     }
 }

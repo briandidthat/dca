@@ -4,6 +4,8 @@ pragma solidity ^0.8.0;
 import "./interfaces/IWeth.sol";
 import "./interfaces/IVault.sol";
 import "./interfaces/VaultLibrary.sol";
+import "./interfaces/IExecutor.sol";
+import "./VaultStorage.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 
@@ -12,11 +14,9 @@ contract Vault is IVault, Initializable {
     address private owner;
     address private operator;
     Status private status;
-    uint256 private activeStrategies;
     mapping(address => uint256) private balances;
-    mapping(bytes32 => Strategy) private strategies;
     address[] private tokens;
-    bytes32[] private strategyHashes;
+    VaultStorage private vaultStorage;
 
     IWeth public constant WETH =
         IWeth(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
@@ -55,11 +55,13 @@ contract Vault is IVault, Initializable {
     function initialize(
         address _factory,
         address _owner,
-        address _operator
+        address _operator,
+        address _vaultStorage
     ) external initializer {
         factory = _factory;
         owner = _owner;
         operator = _operator;
+        vaultStorage = VaultStorage(_vaultStorage);
     }
 
     function setVaultStatus(uint8 _status) external onlyOwner {
@@ -135,68 +137,35 @@ contract Vault is IVault, Initializable {
             "Insufficient funds for Strategy"
         );
 
-        require(
-            strategies[_hashId].sellToken == address(0),
-            "Strategy with that name already exists"
+        bytes32 hashId = vaultStorage.createStrategy(
+            _hashId,
+            _buyToken,
+            _sellToken,
+            _amount,
+            _frequency
         );
 
-        uint256 index = 0;
-        if (strategyHashes.length != 0) {
-            index = strategyHashes.length - 1;
-        }
-
-        Strategy memory strategy = Strategy({
-            idx: index,
-            hashId: _hashId,
-            buyToken: _buyToken,
-            sellToken: _sellToken,
-            amount: _amount,
-            swapCount: 0,
-            lastSwap: 0,
-            timestamp: block.timestamp,
-            frequency: _frequency,
-            status: StrategyStatus.ACTIVE
-        });
-
-        emit NewStrategy(_hashId, _buyToken, _sellToken, _amount, _frequency);
-
-        strategies[_hashId] = strategy;
-        strategyHashes.push(_hashId);
-        activeStrategies++;
-
+        emit NewStrategy(hashId, _buyToken, _sellToken, _amount, _frequency);
         return _hashId;
     }
 
     function updateStrategy(Strategy memory _strategy) external onlyOwner {
-        strategies[_strategy.hashId] = _strategy;
+        vaultStorage.updateStrategy(_strategy);
         emit UpdateStrategy(_strategy.hashId);
     }
 
     function deprecateStrategy(bytes32 _hash) external override onlyOwner {
-        Strategy storage strategy = strategies[_hash];
-        strategy.status = StrategyStatus.DEPRECATED;
-        activeStrategies--;
+        vaultStorage.deprecateStrategy(_hash);
         emit DeprecateStrategy(_hash);
     }
 
     function reactivateStrategy(bytes32 _hash) external override onlyOwner {
-        Strategy storage strategy = strategies[_hash];
-        strategy.status = StrategyStatus.ACTIVE;
-        activeStrategies++;
+        vaultStorage.reactivateStrategy(_hash);
         emit ReactivateStrategy(_hash);
     }
 
     function deleteStrategy(bytes32 _hash) external override onlyOwner {
-        Strategy memory strategy = strategies[_hash];
-        if (strategy.status == StrategyStatus.ACTIVE) {
-            activeStrategies--;
-        }
-
-        delete strategies[_hash];
-        strategyHashes[strategy.idx] = strategyHashes[
-            strategyHashes.length - 1
-        ];
-        strategyHashes.pop();
+        vaultStorage.deleteStrategy(_hash);
         emit DeleteStrategy(_hash);
     }
 
@@ -206,12 +175,7 @@ contract Vault is IVault, Initializable {
         address payable _swapTarget,
         bytes calldata _swapCallData
     ) external onlyAuthorized isActive {
-        Strategy memory strategy = strategies[_hashId];
-
-        require(
-            block.timestamp - strategy.lastSwap >= strategy.frequency,
-            "Not ready to be executed"
-        );
+        Strategy memory strategy = vaultStorage.getStrategy(_hashId);
 
         bool success = _executeSwap(
             strategy.sellToken,
@@ -226,7 +190,7 @@ contract Vault is IVault, Initializable {
 
         strategy.lastSwap = block.timestamp;
         strategy.swapCount += 1;
-        strategies[_hashId] = strategy;
+        vaultStorage.updateStrategy(strategy);
 
         emit ExecuteStrategy(_hashId);
     }
@@ -314,45 +278,25 @@ contract Vault is IVault, Initializable {
     function getStrategy(
         bytes32 _hash
     ) external view returns (Strategy memory) {
-        Strategy memory strategy = strategies[_hash];
+        Strategy memory strategy = vaultStorage.getStrategy(_hash);
 
         require(strategy.buyToken != address(0), "Strategy not found");
         return strategy;
     }
 
     function getStrategies() external view returns (Strategy[] memory) {
-        uint256 length = strategyHashes.length;
-        Strategy[] memory strats = new Strategy[](length);
-
-        for (uint256 i = 0; i < length; i++) {
-            strats[i] = strategies[strategyHashes[i]];
-        }
-
+        Strategy[] memory strats = vaultStorage.getStrategies();
         return strats;
     }
 
     function getActiveStrategies() external view returns (Strategy[] memory) {
-        uint256 length = strategyHashes.length;
-        Strategy[] memory active = new Strategy[](activeStrategies);
-
-        uint256 count = 0;
-        for (uint256 i = 0; i < length; i++) {
-            Strategy memory strategy = strategies[strategyHashes[i]];
-            if (strategy.status == StrategyStatus.ACTIVE) {
-                active[count] = strategy;
-                count++;
-            }
-        }
-
+        Strategy[] memory active = vaultStorage.getActiveStrategies();
         return active;
     }
 
     function balanceOf(
         address _asset
     ) external view override returns (uint256) {
-        if (_asset == VaultLibrary.ETH) {
-            return address(this).balance;
-        }
         return balances[_asset];
     }
 }
